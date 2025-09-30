@@ -191,6 +191,7 @@ npm run build
 **Cause:** `.env.local` file missing or has wrong values
 
 **Fix:**
+
 1. Ensure `.env.local` exists in project root
 2. Check that keys start with correct prefixes:
    - `https://` for URL
@@ -202,6 +203,7 @@ npm run build
 **Cause:** Database migration not run
 
 **Fix:**
+
 1. Go to Supabase SQL Editor
 2. Run `migrations/001_init.sql`
 3. Check Table Editor to confirm tables exist
@@ -211,6 +213,7 @@ npm run build
 **Cause:** pgvector extension not enabled
 
 **Fix:**
+
 1. Go to Supabase Database → Extensions
 2. Enable **pgvector**
 3. Re-run migration
@@ -220,6 +223,7 @@ npm run build
 **Cause:** Dependencies not installed or corrupted
 
 **Fix:**
+
 ```bash
 rm -rf node_modules package-lock.json
 npm install
@@ -228,6 +232,7 @@ npm install
 ### Port 3000 already in use
 
 **Fix:**
+
 ```bash
 # Kill process on port 3000
 lsof -ti:3000 | xargs kill -9
@@ -240,28 +245,30 @@ npm run dev -- -p 3001
 
 ## 📦 Available NPM Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server (port 3000) |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Auto-format code with Prettier |
-| `npm run format:check` | Check if code is formatted |
-| `npm run type-check` | Run TypeScript type checking |
-| `npm run db:migrate` | Show migration instructions |
+| Script                 | Description                          |
+| ---------------------- | ------------------------------------ |
+| `npm run dev`          | Start development server (port 3000) |
+| `npm run build`        | Build for production                 |
+| `npm run start`        | Start production server              |
+| `npm run lint`         | Run ESLint                           |
+| `npm run format`       | Auto-format code with Prettier       |
+| `npm run format:check` | Check if code is formatted           |
+| `npm run type-check`   | Run TypeScript type checking         |
+| `npm run db:migrate`   | Show migration instructions          |
 
 ---
 
 ## 🌐 Deploy to Vercel (Optional)
 
 ### Prerequisites
+
 - GitHub account
 - Code pushed to GitHub repo
 
 ### Steps
 
 1. **Push to GitHub:**
+
 ```bash
 git add .
 git commit -m "feat: complete Milestone 1 scaffold"
@@ -297,6 +304,7 @@ git push origin milestone/01-scaffold
 📍 **You are here**
 
 ⏭️ **Next: Milestone 2 - Authentication**
+
 - Implement Supabase Auth
 - Protected routes
 - User sessions

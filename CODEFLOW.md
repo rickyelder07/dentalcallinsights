@@ -3,6 +3,7 @@
 ## Current Status: ✅ Milestone 1 Complete
 
 **What's Done:**
+
 - Next.js 14 + TypeScript scaffold with App Router
 - TailwindCSS styling configured
 - Supabase client setup
@@ -93,6 +94,7 @@
 ## Next Milestones (Priority Order)
 
 ### 🔐 Milestone 2: Authentication (Week 1)
+
 **Why first:** Need to secure all other features
 
 - [ ] Supabase Auth integration
@@ -104,18 +106,21 @@
 - [ ] Profile page
 
 **Files to create:**
+
 - `app/api/auth/[...nextauth]/route.ts` (if using NextAuth)
 - `middleware.ts` (route protection)
 - `app/signup/page.tsx`
 - `lib/auth.ts` (auth helpers)
 
 **Database changes:**
+
 - Enable RLS policies on all tables
 - Link calls to auth.users via user_id
 
 ---
 
 ### 📤 Milestone 3: Upload & Storage (Week 2)
+
 **Why next:** Foundation for all processing
 
 - [ ] File upload component with drag-and-drop
@@ -125,17 +130,20 @@
 - [ ] Client-side validation (file type, size)
 
 **Files to create:**
+
 - `components/AudioUploader.tsx`
 - `app/api/upload/route.ts` (server-side handler)
 - `lib/storage.ts` (Supabase Storage helpers)
 
 **Supabase setup:**
+
 - Create storage bucket: `call-recordings`
 - Set appropriate RLS policies
 
 ---
 
 ### 🎙️ Milestone 4: Transcription Pipeline (Week 3)
+
 **Why next:** Core value proposition
 
 - [ ] OpenAI Whisper API integration
@@ -145,6 +153,7 @@
 - [ ] Edit transcript capability
 
 **Files to create:**
+
 - `app/api/transcribe/route.ts`
 - `app/calls/[id]/page.tsx` (call detail view)
 - `components/TranscriptViewer.tsx`
@@ -152,6 +161,7 @@
 - `lib/openai.ts` (OpenAI API helpers)
 
 **Optional enhancements:**
+
 - Speaker diarization
 - Timestamp alignment
 - Confidence scores
@@ -159,6 +169,7 @@
 ---
 
 ### 🤖 Milestone 5: AI Insights (Week 4)
+
 **Why next:** Adds intelligence layer
 
 - [ ] GPT-4 summarization
@@ -168,17 +179,20 @@
 - [ ] Batch processing for existing transcripts
 
 **Files to create:**
+
 - `app/api/analyze/route.ts`
 - `lib/ai-analysis.ts`
 - `components/InsightCards.tsx`
 
 **Prompt engineering:**
+
 - Design effective prompts for dental call context
 - Test and iterate on summary quality
 
 ---
 
 ### 🔍 Milestone 6: Embeddings & Search (Week 5)
+
 **Why next:** Enables discovery across all calls
 
 - [ ] Chunk transcripts into segments
@@ -188,12 +202,14 @@
 - [ ] Highlight matching segments
 
 **Files to create:**
+
 - `app/api/embed/route.ts`
 - `app/api/search/route.ts`
 - `components/SearchBar.tsx`
 - `lib/embeddings.ts`
 
 **Performance considerations:**
+
 - Batch embedding generation
 - Cache frequent searches
 - Tune ivfflat index parameters
@@ -201,6 +217,7 @@
 ---
 
 ### 📚 Milestone 7: Library & Analytics (Week 6)
+
 **Why next:** User needs to manage growing data
 
 - [ ] Paginated call list
@@ -214,6 +231,7 @@
   - Trends over time
 
 **Files to create:**
+
 - `app/library/page.tsx` (replace placeholder)
 - `components/CallCard.tsx`
 - `components/Filters.tsx`
@@ -223,6 +241,7 @@
 ---
 
 ### ✅ Milestone 8: QA & Compliance (Week 7-8)
+
 **Why last:** Builds on all previous features
 
 - [ ] QA checklist templates
@@ -233,12 +252,14 @@
 - [ ] Export reports (PDF, CSV)
 
 **Files to create:**
+
 - `app/qa/page.tsx` (replace placeholder)
 - `app/qa/[callId]/page.tsx`
 - `components/QAChecklist.tsx`
 - `components/ComplianceScorecard.tsx`
 
 **Database changes:**
+
 - New table: `qa_checklists`
 - New table: `qa_scores`
 - New table: `audit_logs`
@@ -248,30 +269,35 @@
 ## Technical Decisions & Rationale
 
 ### Why Next.js App Router?
+
 - Server Components reduce client-side JS
 - Built-in API routes
 - Excellent Vercel integration
 - File-based routing
 
 ### Why Supabase?
+
 - Postgres + pgvector in one platform
 - Built-in auth and storage
 - Real-time subscriptions (future use)
 - Generous free tier
 
 ### Why pgvector?
+
 - Native Postgres extension
 - No separate vector DB needed
 - Proven at scale
 - Cost-effective
 
 ### Why OpenAI?
+
 - Industry-leading transcription (Whisper)
 - Powerful summarization (GPT-4)
 - High-quality embeddings
 - Single API for all AI needs
 
 ### Why Vercel?
+
 - Zero-config Next.js deployment
 - Edge Functions for performance
 - Automatic HTTPS and CDN
@@ -282,6 +308,7 @@
 ## Performance Considerations
 
 ### Current Bottlenecks (to address later)
+
 1. **Transcription latency** (30s-2min per call)
    - Solution: Background jobs with progress updates
 2. **Embedding generation** (1-2s per chunk)
@@ -290,6 +317,7 @@
    - Solution: Tune ivfflat index, add caching
 
 ### Optimization Strategies
+
 - Use Server Components for data fetching
 - Implement proper loading states
 - Add caching layer (Redis or Vercel KV)
@@ -329,6 +357,7 @@
    - Upload → Transcribe → Search flow
 
 **Tools to add:**
+
 - Jest + React Testing Library
 - Playwright (E2E)
 - Supabase local development
@@ -348,19 +377,23 @@
 ## Cost Estimates (at scale)
 
 **OpenAI:**
+
 - Whisper: ~$0.006/minute
 - GPT-4 Summaries: ~$0.03/call
 - Embeddings: ~$0.0001/1k tokens
 
 **Supabase:**
+
 - Free tier: 500MB DB, 1GB storage
 - Pro: $25/mo (8GB DB, 100GB storage)
 
 **Vercel:**
+
 - Free tier: 100GB bandwidth
 - Pro: $20/mo (1TB bandwidth)
 
 **Example:** 1000 calls/month (~15 min each)
+
 - Transcription: $90
 - Summaries: $30
 - Embeddings: $5
@@ -401,6 +434,7 @@ git push origin milestone/02-auth
 ```
 
 **Branch naming:**
+
 - `milestone/XX-feature-name`
 - `feat/feature-name`
 - `fix/bug-description`

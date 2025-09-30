@@ -63,26 +63,28 @@ dentalcallinsights/
 
 ## 📊 File Statistics
 
-| Category | Files | Lines of Code |
-|----------|-------|---------------|
-| **Application** | 7 | ~600 |
-| **Libraries** | 1 | ~60 |
-| **Database** | 1 | ~220 |
-| **Configuration** | 8 | ~150 |
-| **Documentation** | 6 | ~1,200 |
-| **TOTAL** | 23 | ~2,230 |
+| Category          | Files | Lines of Code |
+| ----------------- | ----- | ------------- |
+| **Application**   | 7     | ~600          |
+| **Libraries**     | 1     | ~60           |
+| **Database**      | 1     | ~220          |
+| **Configuration** | 8     | ~150          |
+| **Documentation** | 6     | ~1,200        |
+| **TOTAL**         | 23    | ~2,230        |
 
 ---
 
 ## 🎨 Technology Stack
 
 ### Frontend
+
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript 5.3+
 - **Styling:** TailwindCSS 3.4
 - **Font:** Inter (Google Fonts)
 
 ### Backend
+
 - **Database:** Supabase (PostgreSQL 15+)
 - **Vector Search:** pgvector extension
 - **Auth:** Supabase Auth (not yet implemented)
@@ -90,11 +92,13 @@ dentalcallinsights/
 - **API:** Next.js API Routes (to be added)
 
 ### AI/ML (Planned)
+
 - **Transcription:** OpenAI Whisper
 - **Summarization:** OpenAI GPT-4
 - **Embeddings:** OpenAI text-embedding-ada-002
 
 ### DevOps
+
 - **Hosting:** Vercel
 - **Version Control:** Git + GitHub
 - **Linting:** ESLint 8.56+
@@ -132,6 +136,7 @@ dentalcallinsights/
 ## 🗂️ Database Schema
 
 ### `calls` Table
+
 Stores audio file metadata and references.
 
 ```sql
@@ -151,6 +156,7 @@ CREATE INDEX idx_calls_metadata ON calls USING GIN (metadata jsonb_path_ops);
 ```
 
 **Example metadata:**
+
 ```json
 {
   "patient_id": "P001",
@@ -161,6 +167,7 @@ CREATE INDEX idx_calls_metadata ON calls USING GIN (metadata jsonb_path_ops);
 ```
 
 ### `transcripts` Table
+
 Stores transcription results and AI insights.
 
 ```sql
@@ -178,12 +185,13 @@ CREATE TABLE transcripts (
 
 -- Indexes
 CREATE INDEX idx_transcripts_call_id ON transcripts(call_id);
-CREATE INDEX idx_transcripts_fulltext ON transcripts 
+CREATE INDEX idx_transcripts_fulltext ON transcripts
     USING GIN (to_tsvector('english', transcript));
 CREATE INDEX idx_transcripts_sentiment ON transcripts(sentiment);
 ```
 
 ### `embeddings` Table
+
 Stores vector embeddings for semantic search.
 
 ```sql
@@ -199,11 +207,12 @@ CREATE TABLE embeddings (
 
 -- Indexes
 CREATE INDEX idx_embeddings_call_id ON embeddings(call_id);
-CREATE INDEX idx_embeddings_vector ON embeddings 
+CREATE INDEX idx_embeddings_vector ON embeddings
     USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 ```
 
 **Vector dimensions:**
+
 - `vector(1536)` - OpenAI text-embedding-ada-002
 - `vector(3072)` - OpenAI text-embedding-3-large
 
@@ -231,28 +240,30 @@ npm run db:migrate       # Show migration instructions
 
 ## 📖 Documentation Guide
 
-| Read This... | When You Want To... |
-|--------------|---------------------|
-| **README.md** | Get complete setup instructions |
-| **SETUP_INSTRUCTIONS.md** | Quick-start in 5 minutes |
-| **CODEFLOW.md** | Understand architecture & roadmap |
-| **MILESTONE_1_COMPLETE.md** | See what's been built |
-| **PROJECT_STRUCTURE.md** | Understand file organization |
-| **GIT_COMMIT_MESSAGE.md** | Follow Git workflow |
-| **migrations/001_init.sql** | Understand database schema |
-| **lib/supabase.ts** | See TypeScript types |
+| Read This...                | When You Want To...               |
+| --------------------------- | --------------------------------- |
+| **README.md**               | Get complete setup instructions   |
+| **SETUP_INSTRUCTIONS.md**   | Quick-start in 5 minutes          |
+| **CODEFLOW.md**             | Understand architecture & roadmap |
+| **MILESTONE_1_COMPLETE.md** | See what's been built             |
+| **PROJECT_STRUCTURE.md**    | Understand file organization      |
+| **GIT_COMMIT_MESSAGE.md**   | Follow Git workflow               |
+| **migrations/001_init.sql** | Understand database schema        |
+| **lib/supabase.ts**         | See TypeScript types              |
 
 ---
 
 ## 🔒 Security Notes
 
 ### ✅ Secure
+
 - `.env.local` in `.gitignore`
 - Environment template provided (`env.example.txt`)
 - No secrets committed to repository
 - Service role key documented as secret-only
 
 ### ⚠️ To Be Secured (Milestone 2+)
+
 - Row Level Security (RLS) policies
 - API rate limiting
 - Input validation
@@ -277,6 +288,7 @@ npm run db:migrate       # Show migration instructions
    - Fill in actual keys
 
 4. **Install & run** (3 min)
+
    ```bash
    npm install
    npm run dev

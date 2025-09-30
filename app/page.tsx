@@ -16,17 +16,18 @@ export default function HomePage() {
             <span className="text-primary-600"> Actionable Insights</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Upload call recordings, get instant transcripts, summaries, sentiment analysis, 
-            and searchable embeddings. Make data-driven decisions to improve your practice.
+            Upload call recordings, get instant transcripts, summaries,
+            sentiment analysis, and searchable embeddings. Make data-driven
+            decisions to improve your practice.
           </p>
           <div className="flex justify-center gap-4">
-            <Link 
+            <Link
               href="/upload"
               className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
             >
               Upload Your First Call
             </Link>
-            <Link 
+            <Link
               href="/library"
               className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold border-2 border-primary-600 hover:bg-primary-50 transition"
             >
@@ -87,14 +88,14 @@ export default function HomePage() {
   )
 }
 
-function FeatureCard({ 
-  title, 
-  description, 
-  icon 
-}: { 
+function FeatureCard({
+  title,
+  description,
+  icon,
+}: {
   title: string
   description: string
-  icon: string 
+  icon: string
 }) {
   return (
     <div className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition">
@@ -105,14 +106,14 @@ function FeatureCard({
   )
 }
 
-function Step({ 
-  number, 
-  title, 
-  description 
-}: { 
+function Step({
+  number,
+  title,
+  description,
+}: {
   number: string
   title: string
-  description: string 
+  description: string
 }) {
   return (
     <div className="text-center">

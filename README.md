@@ -82,6 +82,7 @@ npm install
 5. Verify that `calls`, `transcripts`, and `embeddings` tables were created
 
 **Alternative:** Use Supabase CLI (recommended for production)
+
 ```bash
 # Install Supabase CLI
 npm install -g supabase
@@ -96,11 +97,13 @@ supabase db push
 ### Step 5: Set Up Environment Variables
 
 1. Copy the environment template:
+
    ```bash
    cp env.example.txt .env.local
    ```
 
 2. Fill in your actual values in `.env.local`:
+
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
@@ -129,7 +132,9 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app running! �
 ## 📊 Database Schema
 
 ### `calls` Table
+
 Stores audio file metadata and references.
+
 ```sql
 id UUID PRIMARY KEY
 user_id UUID NOT NULL
@@ -140,12 +145,15 @@ updated_at TIMESTAMPTZ
 ```
 
 **Indexes:**
+
 - `user_id` - for user-specific queries
 - `created_at` - for time-based sorting
 - `metadata` (GIN) - for flexible JSONB queries
 
 ### `transcripts` Table
+
 Stores transcription results and AI-generated insights.
+
 ```sql
 id UUID PRIMARY KEY
 call_id UUID NOT NULL (FK → calls)
@@ -159,12 +167,15 @@ created_at TIMESTAMPTZ
 ```
 
 **Indexes:**
+
 - `call_id` - for call lookups
 - `transcript` (full-text) - for text search
 - `sentiment` - for filtering
 
 ### `embeddings` Table
+
 Stores vector embeddings for semantic search.
+
 ```sql
 id UUID PRIMARY KEY
 call_id UUID NOT NULL (FK → calls)
@@ -175,10 +186,12 @@ created_at TIMESTAMPTZ
 ```
 
 **Indexes:**
+
 - `call_id` - for call lookups
 - `embedding` (ivfflat) - for vector similarity search
 
 **⚠️ Vector Dimension Notes:**
+
 - Default: `vector(1536)` for OpenAI's `text-embedding-ada-002`
 - For `text-embedding-3-small`: use `vector(1536)`
 - For `text-embedding-3-large`: use `vector(3072)`
@@ -230,41 +243,48 @@ npm run db:migrate   # Migration instructions (see output)
 ## 🗺️ Roadmap & Next Milestones
 
 ### Milestone 2: Authentication & User Management
+
 - [ ] Implement Supabase Auth (email/password, OAuth)
 - [ ] Protected routes and middleware
 - [ ] User profile and settings
 
 ### Milestone 3: Audio Upload & Storage
+
 - [ ] File upload component with drag-and-drop
 - [ ] Supabase Storage integration
 - [ ] Upload progress and validation
 - [ ] Metadata form (patient ID, call type, etc.)
 
 ### Milestone 4: Transcription Pipeline
+
 - [ ] OpenAI Whisper API integration
 - [ ] Background job processing
 - [ ] Transcript display and editing
 - [ ] Speaker diarization (if needed)
 
 ### Milestone 5: AI Insights
+
 - [ ] GPT-based summarization
 - [ ] Sentiment analysis
 - [ ] Key topic extraction
 - [ ] Action item detection
 
 ### Milestone 6: Embeddings & Search
+
 - [ ] OpenAI embeddings generation
 - [ ] Vector storage in pgvector
 - [ ] Semantic search UI
 - [ ] Search result ranking
 
 ### Milestone 7: Library & Analytics
+
 - [ ] Call library with filters and sorting
 - [ ] Pagination and infinite scroll
 - [ ] Basic analytics dashboard
 - [ ] Export functionality
 
 ### Milestone 8: QA & Compliance
+
 - [ ] QA checklist templates
 - [ ] Compliance scoring
 - [ ] Audit logs
@@ -273,6 +293,7 @@ npm run db:migrate   # Migration instructions (see output)
 ## 🛠️ Development Notes
 
 ### Code Style
+
 - TypeScript strict mode enabled
 - ESLint + Prettier configured
 - Functional React components with hooks
@@ -295,6 +316,7 @@ Flexible schema for call metadata (patient ID, tags, custom fields) without rigi
 ## 🤝 Contributing
 
 This is a solo project for now, but contributions welcome! Please:
+
 1. Create a feature branch
 2. Follow existing code style
 3. Add tests where applicable
@@ -307,15 +329,19 @@ This is a solo project for now, but contributions welcome! Please:
 ## 🐛 Troubleshooting
 
 ### Error: "Missing Supabase environment variables"
+
 → Make sure `.env.local` exists and contains valid Supabase keys
 
 ### Error: "relation 'calls' does not exist"
+
 → Run the migration SQL in Supabase SQL Editor
 
 ### Error: "type 'vector' does not exist"
+
 → Enable the pgvector extension in Supabase dashboard
 
 ### Build fails on Vercel
+
 → Check that all environment variables are set in Vercel project settings
 
 ## 📞 Support

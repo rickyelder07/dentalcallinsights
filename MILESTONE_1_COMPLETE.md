@@ -13,6 +13,7 @@
 ## 📦 What Was Built
 
 ### ✅ Core Application
+
 - **Next.js 14** with TypeScript and App Router
 - **TailwindCSS** configured with custom color palette
 - **Beautiful landing page** with feature cards and hero section
@@ -20,6 +21,7 @@
 - **Placeholder pages** for all main routes
 
 ### ✅ Database Architecture
+
 - **Supabase client** configured and typed
 - **SQL migration** (`001_init.sql`) with:
   - `calls` table - stores audio file metadata (JSONB)
@@ -29,12 +31,14 @@
   - Utility function: `search_embeddings()`
 
 ### ✅ Code Quality Tools
+
 - **ESLint** with TypeScript rules
 - **Prettier** for consistent formatting
 - **TypeScript** strict mode enabled
 - **NPM scripts** for all common tasks
 
 ### ✅ Documentation
+
 - **README.md** - comprehensive project documentation
 - **CODEFLOW.md** - architecture and 8-milestone roadmap
 - **SETUP_INSTRUCTIONS.md** - quick-start guide
@@ -63,15 +67,15 @@ npm run dev
 
 ## 📊 Project Statistics
 
-| Metric | Value |
-|--------|-------|
-| **Total Files** | 23 |
-| **Lines of Code** | ~1,956 |
-| **React Components** | 5 pages |
-| **Database Tables** | 3 (calls, transcripts, embeddings) |
-| **Database Functions** | 1 (search_embeddings) |
-| **NPM Scripts** | 8 |
-| **Documentation Pages** | 5 |
+| Metric                  | Value                              |
+| ----------------------- | ---------------------------------- |
+| **Total Files**         | 23                                 |
+| **Lines of Code**       | ~1,956                             |
+| **React Components**    | 5 pages                            |
+| **Database Tables**     | 3 (calls, transcripts, embeddings) |
+| **Database Functions**  | 1 (search_embeddings)              |
+| **NPM Scripts**         | 8                                  |
+| **Documentation Pages** | 5                                  |
 
 ---
 
@@ -123,26 +127,31 @@ dentalcallinsights/
 ## 🎯 Key Technical Decisions
 
 ### 1. **Why vector(1536)?**
+
 - Sized for OpenAI's `text-embedding-ada-002` model
 - Can be changed to 3072 for `text-embedding-3-large`
 - See migration file comments for details
 
 ### 2. **Why JSONB for metadata?**
+
 - Flexible schema for patient IDs, tags, custom fields
 - No rigid table structure needed
 - GIN index enables fast queries
 
 ### 3. **Why ivfflat index?**
+
 - Balanced performance for vector similarity search
 - Lists parameter (100) tuned for expected dataset size
 - Can be adjusted based on performance testing
 
 ### 4. **Why App Router?**
+
 - Server Components reduce client-side JS
 - Better performance and SEO
 - Future-proof (recommended by Next.js team)
 
 ### 5. **Why Supabase?**
+
 - Postgres + pgvector in one platform
 - Built-in auth and storage
 - Generous free tier
@@ -206,40 +215,48 @@ git push -u origin milestone/01-scaffold
 ## 🗺️ Roadmap Overview
 
 ### ✅ Milestone 1: Scaffold (COMPLETE)
+
 Project structure, database schema, documentation
 
 ### ⏭️ Milestone 2: Authentication (NEXT - Week 1)
+
 - Supabase Auth (email/password, OAuth)
 - Protected routes with middleware
 - User sessions and profiles
 - Enable RLS policies
 
 ### 📍 Milestone 3: Upload & Storage (Week 2)
+
 - File upload with drag-and-drop
 - Supabase Storage integration
 - Metadata form (patient ID, tags)
 
 ### 📍 Milestone 4: Transcription (Week 3)
+
 - OpenAI Whisper integration
 - Background job processing
 - Transcript display and editing
 
 ### 📍 Milestone 5: AI Insights (Week 4)
+
 - GPT-4 summarization
 - Sentiment analysis
 - Topic extraction
 
 ### 📍 Milestone 6: Embeddings & Search (Week 5)
+
 - Vector embeddings generation
 - Semantic search UI
 - Result ranking
 
 ### 📍 Milestone 7: Library & Analytics (Week 6)
+
 - Paginated call library
 - Advanced filters
 - Analytics dashboard
 
 ### 📍 Milestone 8: QA & Compliance (Week 7-8)
+
 - QA checklists
 - Compliance scoring
 - Audit logs and reporting
@@ -248,13 +265,13 @@ Project structure, database schema, documentation
 
 ## 📚 Documentation Quick Links
 
-| Document | Purpose |
-|----------|---------|
-| **README.md** | Complete setup guide + troubleshooting |
-| **CODEFLOW.md** | Architecture, data flow, and roadmap |
-| **SETUP_INSTRUCTIONS.md** | Quick-start guide (5 minutes) |
-| **GIT_COMMIT_MESSAGE.md** | Git workflow and commit templates |
-| **migrations/001_init.sql** | Database schema with comments |
+| Document                    | Purpose                                |
+| --------------------------- | -------------------------------------- |
+| **README.md**               | Complete setup guide + troubleshooting |
+| **CODEFLOW.md**             | Architecture, data flow, and roadmap   |
+| **SETUP_INSTRUCTIONS.md**   | Quick-start guide (5 minutes)          |
+| **GIT_COMMIT_MESSAGE.md**   | Git workflow and commit templates      |
+| **migrations/001_init.sql** | Database schema with comments          |
 
 ---
 
@@ -273,11 +290,13 @@ Project structure, database schema, documentation
 ## 🚀 Deploy Instructions
 
 ### Prerequisites
+
 - Supabase project created
 - OpenAI API key obtained
 - GitHub repository created
 
 ### Local Development
+
 ```bash
 # 1. Install dependencies
 npm install
@@ -294,6 +313,7 @@ npm run dev
 ```
 
 ### Deploy to Vercel
+
 ```bash
 # 1. Push to GitHub
 git push origin milestone/01-scaffold
@@ -322,6 +342,7 @@ These are intentional - Milestone 1 is about scaffolding!
 ## 💡 Next Steps (Action Items)
 
 ### Immediate (Before Starting Milestone 2)
+
 1. [ ] Run `npm install` to verify dependencies
 2. [ ] Create Supabase project
 3. [ ] Run database migration
@@ -330,6 +351,7 @@ These are intentional - Milestone 1 is about scaffolding!
 6. [ ] Visit http://localhost:3000 and explore
 
 ### When Ready for Milestone 2
+
 1. [ ] Review CODEFLOW.md Milestone 2 section
 2. [ ] Set up Supabase Auth in dashboard
 3. [ ] Start implementing authentication components
@@ -347,7 +369,7 @@ This scaffold demonstrates:
 ✅ **Professional code quality** tools (ESLint, Prettier)  
 ✅ **Comprehensive documentation** practices  
 ✅ **Scalable project structure** for growth  
-✅ **Git workflow** with feature branches  
+✅ **Git workflow** with feature branches
 
 ---
 
@@ -368,6 +390,7 @@ If you encounter issues:
 **You now have a production-ready foundation for DentalCallInsights!**
 
 The entire stack is configured:
+
 - ✅ Next.js + TypeScript
 - ✅ TailwindCSS
 - ✅ Supabase (client ready)

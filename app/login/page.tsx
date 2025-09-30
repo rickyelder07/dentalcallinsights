@@ -7,7 +7,9 @@ export default function LoginPage() {
   return (
     <div className="max-w-md mx-auto px-4 py-12">
       <div className="bg-white shadow-lg rounded-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">Login</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+          Login
+        </h1>
         <p className="text-gray-600 mb-8 text-center">
           Sign in to access your call insights
         </p>

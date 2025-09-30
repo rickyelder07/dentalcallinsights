@@ -29,34 +29,34 @@ export default function RootLayout({
             <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between h-16 items-center">
                 <div className="flex items-center">
-                  <Link 
-                    href="/" 
+                  <Link
+                    href="/"
                     className="text-xl font-bold text-primary-600 hover:text-primary-700"
                   >
                     DentalCallInsights
                   </Link>
                 </div>
                 <div className="flex space-x-8">
-                  <Link 
-                    href="/upload" 
+                  <Link
+                    href="/upload"
                     className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     Upload
                   </Link>
-                  <Link 
-                    href="/library" 
+                  <Link
+                    href="/library"
                     className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     Library
                   </Link>
-                  <Link 
-                    href="/qa" 
+                  <Link
+                    href="/qa"
                     className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     QA
                   </Link>
-                  <Link 
-                    href="/login" 
+                  <Link
+                    href="/login"
                     className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
                   >
                     Login
@@ -67,9 +67,7 @@ export default function RootLayout({
           </header>
 
           {/* Main Content */}
-          <main className="flex-1">
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
 
           {/* Footer */}
           <footer className="bg-gray-50 border-t mt-auto">
