@@ -1,0 +1,33 @@
+You are an expert full-stack engineer and will act as my Cursor copilot. Project: "DentalCallInsights" — a Next.js + Supabase web app for turning call MP3s + call metadata into searchable transcripts, summaries, sentiment, embeddings, and basic analytics. I need you to scaffold a complete starter repo and provide migration SQL.
+
+Requirements & constraints:
+- Tech stack: Next.js (TypeScript, App Router), TailwindCSS, Supabase (Auth, Postgres, Storage, pgvector), Vercel.
+- Code style: TypeScript, ESLint, Prettier, use functional React components and hooks. Keep server/client boundaries explicit (use server components where appropriate but keep examples simple).
+- Do NOT output any secret keys in code — use placeholders and `.env.local.example`.
+- Provide clear README setup steps and one-line commands to run locally.
+
+Deliverables (create real files; show file path + file content):
+1. `package.json` and `tsconfig.json` configured for Next.js + TypeScript.
+2. Tailwind + PostCSS config and basic global CSS.
+3. `lib/supabase.ts` — Supabase client that reads `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from env.
+4. `app/layout.tsx` and `app/page.tsx` minimal layout with header and placeholder nav: Login, Upload, Library, QA.
+5. `.env.local.example` listing all required env variables (placeholders only): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `NEXT_PUBLIC_VERCEL_URL`, `DATABASE_URL` (if used).
+6. `README.md` with exact steps to:
+   - create supabase project,
+   - enable pgvector extension,
+   - run migrations,
+   - set env vars,
+   - start dev server,
+   - deploy to Vercel.
+7. SQL migrations: `migrations/001_init.sql` that:
+   - enables `pgvector`,
+   - creates `calls` table (id UUID PK, user_id UUID, audio_path text, metadata jsonb, created_at),
+   - creates `transcripts` table (id UUID, call_id FK, transcript text, summary text, sentiment text, duration int, created_at),
+   - creates `embeddings` table with a `vector` column sized to a reasonable default (use vector(1536) but add a comment about adjusting for embedding model dims),
+   - create indexes useful for search (e.g., GIN on metadata jsonb where helpful).
+8. `scripts/dev` and `scripts/db:migrate` entries in package.json that run Next dev and run migrations (explain how to run SQL on Supabase).
+9. A short CODEFLOW in `README` that explains next milestones.
+
+Be explicit in your response: show file tree and contents, and include commands the developer must run locally, and a brief checklist for verifying the scaffold runs (e.g., visiting `http://localhost:3000` after `npm run dev`). Provide brief notes on decisions (why pgvector vector(1536) chosen, how to change).
+
+Finish by creating a git commit message suggestion and recommended branch name `milestone/01-scaffold`. Keep the response machine-readable: for every file include a header with the file path (```path/to/file```) followed by content.
