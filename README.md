@@ -13,13 +13,21 @@ Transform dental call recordings into actionable insights with AI-powered transc
 
 ## 📋 Features
 
-- ✅ User authentication and authorization
-- ✅ Audio file upload and storage
-- ✅ Automatic transcription of call recordings
-- ✅ AI-generated summaries and sentiment analysis
-- ✅ Vector embeddings for semantic search
-- ✅ Searchable call library with filters
-- ✅ QA dashboard and analytics
+### ✅ Completed (Milestones 1-2)
+- ✅ User authentication and authorization (email/password)
+- ✅ Row Level Security (RLS) for data isolation
+- ✅ Protected routes with middleware
+- ✅ User profile and account management
+- ✅ Password reset flow
+- ✅ Session persistence and auto-refresh
+
+### 🚧 In Progress (Future Milestones)
+- ⏳ Audio file upload and storage
+- ⏳ Automatic transcription of call recordings
+- ⏳ AI-generated summaries and sentiment analysis
+- ⏳ Vector embeddings for semantic search
+- ⏳ Searchable call library with filters
+- ⏳ QA dashboard and analytics
 
 ## 🏗️ Project Structure
 
@@ -73,13 +81,39 @@ npm install
 2. Search for `vector` and enable the **pgvector** extension
 3. This is required for storing and searching embeddings
 
-### Step 4: Run Database Migrations
+### Step 4: Enable Email Authentication
+
+1. In your Supabase dashboard, go to **Authentication** → **Providers**
+2. Enable the **Email** provider
+3. Configure settings (optional but recommended):
+   - ✅ Enable email confirmations
+   - ✅ Enable password recovery
+   - Set minimum password strength
+
+### Step 5: Run Database Migrations
+
+**Migration 001 - Initial Schema:**
 
 1. In your Supabase dashboard, navigate to **SQL Editor**
 2. Click **New Query**
 3. Copy the contents of `migrations/001_init.sql` and paste into the editor
 4. Click **Run** to execute the migration
 5. Verify that `calls`, `transcripts`, and `embeddings` tables were created
+
+**Migration 002 - Row Level Security:**
+
+1. In SQL Editor, click **New Query**
+2. Copy the contents of `migrations/002_enable_rls.sql` and paste into the editor
+3. Click **Run** to execute the migration
+4. Verify RLS is enabled with this query:
+
+```sql
+SELECT tablename, rowsecurity FROM pg_tables
+WHERE schemaname = 'public'
+AND tablename IN ('calls', 'transcripts', 'embeddings');
+```
+
+All tables should show `t` (true) for `rowsecurity`.
 
 **Alternative:** Use Supabase CLI (recommended for production)
 
@@ -94,7 +128,7 @@ supabase link --project-ref your-project-ref
 supabase db push
 ```
 
-### Step 5: Set Up Environment Variables
+### Step 6: Set Up Environment Variables
 
 1. Copy the environment template:
 
@@ -114,7 +148,15 @@ supabase db push
 
 3. **⚠️ NEVER commit `.env.local` to git!** (It's already in `.gitignore`)
 
-### Step 6: Start the Development Server
+### Step 7: Install Dependencies
+
+```bash
+npm install
+```
+
+This will install all required packages including `@supabase/auth-helpers-nextjs`.
+
+### Step 8: Start the Development Server
 
 ```bash
 npm run dev
@@ -122,12 +164,26 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000) to see your app running! ✅
 
-### Step 7: Verify the Setup
+### Step 9: Verify the Setup
 
 - ✅ The home page loads without errors
-- ✅ Navigation links are visible (Login, Upload, Library, QA)
+- ✅ Navigation links are visible (Login/Sign Up when logged out)
 - ✅ No console errors in browser dev tools
 - ✅ Database tables exist in Supabase dashboard
+- ✅ Can sign up a new account
+- ✅ Can sign in and access protected routes
+- ✅ Session persists on page refresh
+
+### Step 10: Test Authentication (Optional)
+
+1. Go to http://localhost:3000/signup
+2. Create a test account with a valid email
+3. Sign in at http://localhost:3000/login
+4. Verify you can access /library, /upload, /qa, /profile
+5. Sign out and verify redirect to login
+6. Try accessing /library while logged out → should redirect to login
+
+For detailed testing instructions, see `AUTHENTICATION_SETUP.md`.
 
 ## 📊 Database Schema
 
@@ -235,18 +291,38 @@ npm run db:migrate   # Migration instructions (see output)
 ## 🔐 Security Best Practices
 
 - ✅ Never commit `.env.local` or any secrets
-- ✅ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-side code
+- ✅ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-side code (never expose to client)
 - ✅ Environment variables template provided in `env.example.txt`
 - ✅ `.gitignore` configured to exclude sensitive files
-- ⚠️ Enable Row Level Security (RLS) in production (see migration file comments)
+- ✅ Row Level Security (RLS) enabled on all tables
+- ✅ User data isolation enforced at database level
+- ✅ Session tokens stored in httpOnly cookies (XSS protection)
+- ✅ CSRF protection built into Supabase Auth
+- ✅ Password strength validation
+- ✅ Email/password format validation
+
+**Testing RLS:**
+
+See `AUTHENTICATION_SETUP.md` for detailed instructions on testing Row Level Security policies.
 
 ## 🗺️ Roadmap & Next Milestones
 
-### Milestone 2: Authentication & User Management
+### ✅ Milestone 1: Project Scaffold (Complete)
 
-- [ ] Implement Supabase Auth (email/password, OAuth)
-- [ ] Protected routes and middleware
-- [ ] User profile and settings
+- ✅ Next.js 14 + TypeScript setup
+- ✅ TailwindCSS configuration
+- ✅ Supabase client setup
+- ✅ Database schema with pgvector
+- ✅ Basic navigation and pages
+
+### ✅ Milestone 2: Authentication & User Management (Complete)
+
+- ✅ Implement Supabase Auth (email/password)
+- ✅ Protected routes with Next.js middleware
+- ✅ Row Level Security (RLS) on all tables
+- ✅ User profile and password management
+- ✅ Password reset flow
+- ✅ Session management with auto-refresh
 
 ### Milestone 3: Audio Upload & Storage
 

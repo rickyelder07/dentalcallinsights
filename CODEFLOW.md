@@ -1,9 +1,8 @@
 # DentalCallInsights - Development Flow & Architecture
 
-## Current Status: ✅ Milestone 1 Complete
+## Current Status: ✅ Milestone 2 Complete (Authentication & RLS)
 
-**What's Done:**
-
+### Milestone 1 Complete ✅
 - Next.js 14 + TypeScript scaffold with App Router
 - TailwindCSS styling configured
 - Supabase client setup
@@ -12,27 +11,98 @@
 - ESLint + Prettier configured
 - Comprehensive README with setup instructions
 
+### Milestone 2 Complete ✅
+- Supabase Auth integration (email/password)
+- Row Level Security (RLS) enabled on all tables
+- Protected routes with Next.js middleware
+- User authentication flow (signup, login, logout)
+- Password reset and account management
+- Session management with auto-refresh
+- AuthProvider context for global auth state
+- Type-safe auth utilities and validation
+- Comprehensive error handling
+
 ## Architecture Overview
 
 ```
-┌─────────────────┐
-│   Next.js App   │
-│  (Vercel Edge)  │
-└────────┬────────┘
-         │
-         ├──→ Supabase Auth (User Management)
-         │
-         ├──→ Supabase Storage (MP3 files)
-         │
-         ├──→ Supabase Postgres + pgvector
-         │     - calls table
-         │     - transcripts table
-         │     - embeddings table (vector search)
-         │
-         └──→ OpenAI API
-               - Whisper (transcription)
-               - GPT-4 (summarization)
-               - Embeddings (semantic search)
+┌──────────────────────────────────────────────────┐
+│              Next.js App (Vercel Edge)           │
+│                                                   │
+│  ┌────────────────────────────────────────────┐ │
+│  │  Middleware (Route Protection)             │ │
+│  │  - Auth check on every request             │ │
+│  │  - Session refresh                         │ │
+│  │  - Protected routes: /library, /upload...  │ │
+│  └────────────────┬───────────────────────────┘ │
+│                   │                              │
+│  ┌────────────────▼───────────────────────────┐ │
+│  │  Client Components                         │ │
+│  │  - AuthProvider (global auth state)        │ │
+│  │  - useAuth() hook                          │ │
+│  │  - Protected pages                         │ │
+│  └────────────────┬───────────────────────────┘ │
+└───────────────────┼──────────────────────────────┘
+                    │
+                    ├──→ Supabase Auth (✅ ACTIVE)
+                    │     - Email/password authentication
+                    │     - Session management
+                    │     - Password reset
+                    │     - User management
+                    │
+                    ├──→ Supabase Postgres + pgvector (✅ RLS ENABLED)
+                    │     - calls table (RLS: auth.uid() = user_id)
+                    │     - transcripts table (RLS: via calls join)
+                    │     - embeddings table (RLS: via calls join)
+                    │
+                    ├──→ Supabase Storage (Coming soon)
+                    │     - MP3 file storage
+                    │
+                    └──→ OpenAI API (Coming soon)
+                          - Whisper (transcription)
+                          - GPT-4 (summarization)
+                          - Embeddings (semantic search)
+```
+
+## Authentication Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    User Access Flow                      │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+                 ┌──────────────────┐
+                 │ User visits page │
+                 └────────┬─────────┘
+                          │
+                          ▼
+        ┌─────────────────────────────────────┐
+        │  Middleware checks auth state       │
+        │  - Get session from cookie          │
+        │  - Refresh if needed                │
+        └────────┬────────────────────┬───────┘
+                 │                    │
+        Protected Route?      Public Route?
+                 │                    │
+                 ▼                    ▼
+         ┌──────────────┐    ┌──────────────┐
+         │Has session?  │    │ Allow access │
+         └──┬─────────┬─┘    └──────────────┘
+            │         │
+           Yes        No
+            │         │
+            │         ▼
+            │   ┌──────────────────────────┐
+            │   │ Redirect to /login       │
+            │   │ ?redirectTo=/original    │
+            │   └──────────────────────────┘
+            │
+            ▼
+   ┌─────────────────────┐
+   │ Load page content   │
+   │ - AuthProvider      │
+   │ - User data         │
+   └─────────────────────┘
 ```
 
 ## Data Flow
@@ -91,31 +161,57 @@
    └─────────────────────────────────┘
 ```
 
+## Row Level Security (RLS) Model
+
+```
+Database Query Flow with RLS:
+
+Client Request
+     │
+     ▼
+┌──────────────────────────────────────────┐
+│ Client: supabase.from('calls').select()  │
+│ Auth Token: eyJ...user_id: abc123       │
+└────────────────┬─────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│ Supabase Server: Validate JWT               │
+│ Extract: auth.uid() = 'abc123'              │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────────────────────┐
+│ PostgreSQL: Apply RLS Policy               │
+│                                             │
+│ SELECT * FROM calls                         │
+│ WHERE user_id = auth.uid()  -- 'abc123'     │
+│                                             │
+│ Result: Only User abc123's calls returned  │
+└──────────────────────────────────────────────────┘
+
+Key Benefits:
+✅ Security at database level (can't be bypassed)
+✅ No need to manually filter by user_id in code
+✅ Prevents accidental data leaks
+✅ Automatic for all queries (SELECT, INSERT, UPDATE, DELETE)
+```
+
 ## Next Milestones (Priority Order)
 
-### 🔐 Milestone 2: Authentication (Week 1)
+### ✅ Milestone 2: Authentication (Complete)
 
-**Why first:** Need to secure all other features
+**Completed features:**
 
-- [ ] Supabase Auth integration
-  - Email/password signup and login
-  - Password reset flow
-  - OAuth providers (Google, optional)
-- [ ] Protected routes with middleware
-- [ ] User session management
-- [ ] Profile page
+- ✅ Supabase Auth integration (email/password)
+- ✅ Row Level Security on all tables
+- ✅ Protected routes with middleware
+- ✅ Login/Signup/Profile pages
+- ✅ Password reset flow
+- ✅ Session management
+- ✅ User data isolation tested
 
-**Files to create:**
-
-- `app/api/auth/[...nextauth]/route.ts` (if using NextAuth)
-- `middleware.ts` (route protection)
-- `app/signup/page.tsx`
-- `lib/auth.ts` (auth helpers)
-
-**Database changes:**
-
-- Enable RLS policies on all tables
-- Link calls to auth.users via user_id
+**See:** `MILESTONE_2_COMPLETE.md` for full details
 
 ---
 

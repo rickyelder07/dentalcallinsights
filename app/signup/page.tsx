@@ -1,36 +1,40 @@
 /**
- * Login Page
- * User authentication with email/password
+ * Sign Up Page
+ * User registration with email/password and validation
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { signIn, validateEmail } from '@/lib/auth'
+import { signUp, validateEmail, validatePassword, validatePasswordsMatch } from '@/lib/auth'
 import { useAuth } from '@/app/providers/auth-provider'
+import type { PasswordStrength } from '@/types/auth'
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [passwordStrength, setPasswordStrength] = useState<{
+    strength: PasswordStrength
+    feedback: string[]
+  } | null>(null)
 
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user) {
-      const redirectTo = searchParams.get('redirectTo') || '/library'
-      router.push(redirectTo)
+      router.push('/library')
     }
-  }, [user, authLoading, router, searchParams])
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,34 +48,48 @@ export default function LoginPage() {
       return
     }
 
-    if (!formData.password) {
-      setError('Password is required')
+    const passwordValidation = validatePassword(formData.password)
+    if (passwordValidation.strength === 'weak') {
+      setError('Password is too weak. ' + passwordValidation.feedback.join('. '))
+      return
+    }
+
+    const passwordsMatch = validatePasswordsMatch(
+      formData.password,
+      formData.confirmPassword
+    )
+    if (!passwordsMatch.valid) {
+      setError(passwordsMatch.error || 'Passwords do not match')
       return
     }
 
     setLoading(true)
 
     try {
-      const { data, error: signInError } = await signIn(
+      const { data, error: signUpError } = await signUp(
         formData.email,
         formData.password
       )
 
-      if (signInError) {
-        setError(signInError.message)
+      if (signUpError) {
+        setError(signUpError.message)
         setLoading(false)
         return
       }
 
       if (data) {
-        setSuccess('Sign in successful! Redirecting...')
+        setSuccess(
+          'Account created successfully! Please check your email to confirm your account.'
+        )
         
-        // Redirect after successful login
-        const redirectTo = searchParams.get('redirectTo') || '/library'
+        // Clear form
+        setFormData({ email: '', password: '', confirmPassword: '' })
+        setPasswordStrength(null)
+        
+        // Redirect to login after 3 seconds
         setTimeout(() => {
-          router.push(redirectTo)
-          router.refresh()
-        }, 500)
+          router.push('/login')
+        }, 3000)
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
@@ -80,10 +98,26 @@ export default function LoginPage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }))
+    
+    // Update password strength indicator
+    if (name === 'password') {
+      if (value) {
+        const strength = validatePassword(value)
+        setPasswordStrength({
+          strength: strength.strength,
+          feedback: strength.feedback,
+        })
+      } else {
+        setPasswordStrength(null)
+      }
+    }
+    
     // Clear errors on input change
     setError('')
   }
@@ -97,9 +131,24 @@ export default function LoginPage() {
     )
   }
 
-  // Don't show login form if already logged in
+  // Don't show signup form if already logged in
   if (user) {
     return null
+  }
+
+  // Password strength color mapping
+  const strengthColors = {
+    weak: 'bg-red-500',
+    fair: 'bg-yellow-500',
+    good: 'bg-blue-500',
+    strong: 'bg-green-500',
+  }
+
+  const strengthWidths = {
+    weak: 'w-1/4',
+    fair: 'w-1/2',
+    good: 'w-3/4',
+    strong: 'w-full',
   }
 
   return (
@@ -109,10 +158,10 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome Back
+              Create Account
             </h1>
             <p className="text-gray-600">
-              Sign in to access your call insights
+              Sign up to start analyzing your dental call recordings
             </p>
           </div>
 
@@ -130,7 +179,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Login Form */}
+          {/* Sign Up Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Input */}
             <div>
@@ -165,44 +214,81 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-                placeholder="Enter your password"
+                placeholder="Create a strong password"
               />
+              
+              {/* Password Strength Indicator */}
+              {passwordStrength && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-600">
+                      Password strength:
+                    </span>
+                    <span className="text-xs font-medium capitalize">
+                      {passwordStrength.strength}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        strengthColors[passwordStrength.strength]
+                      } ${strengthWidths[passwordStrength.strength]}`}
+                    ></div>
+                  </div>
+                  <ul className="mt-2 text-xs text-gray-600 space-y-1">
+                    {passwordStrength.feedback.map((feedback, idx) => (
+                      <li key={idx}>• {feedback}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
-            {/* Forgot Password Link */}
-            <div className="flex items-center justify-end">
-              <Link
-                href="/reset-password"
-                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+            {/* Confirm Password Input */}
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Forgot password?
-              </Link>
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                placeholder="Re-enter your password"
+              />
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!success}
               className="w-full bg-primary-600 text-white px-4 py-3 rounded-md hover:bg-primary-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Creating account...' : 'Sign Up'}
             </button>
           </form>
 
-          {/* Sign Up Link */}
+          {/* Sign In Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
+              Already have an account?{' '}
               <Link
-                href="/signup"
+                href="/login"
                 className="text-primary-600 hover:text-primary-700 font-medium"
               >
-                Sign up
+                Sign in
               </Link>
             </p>
           </div>
@@ -211,3 +297,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

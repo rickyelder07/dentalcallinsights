@@ -1,13 +1,14 @@
 /**
  * Supabase client configuration
- * Provides browser and server-side Supabase clients
+ * Provides browser and server-side Supabase clients with auth support
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient as createBrowserSupabaseClient, createServerClient as createServerSupabaseClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 // Validate environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
@@ -16,10 +17,38 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Browser-side Supabase client
- * Safe to use in client components and API routes
+ * Create a Supabase client for browser/client components
+ * Automatically handles auth state and cookie management
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export function createBrowserClient() {
+  return createBrowserSupabaseClient(supabaseUrl, supabaseAnonKey)
+}
+
+/**
+ * Create a Supabase client for server components
+ * Handles cookie reading/writing for SSR
+ */
+export function createServerClient() {
+  const cookieStore = cookies()
+  
+  return createServerSupabaseClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+      },
+    }
+  )
+}
+
+/**
+ * Legacy export for backward compatibility
+ * @deprecated Use createBrowserClient() instead
+ */
+export const supabase = createBrowserClient()
 
 /**
  * Type definitions for database tables

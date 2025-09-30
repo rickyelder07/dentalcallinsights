@@ -10,9 +10,12 @@
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "type-check": "tsc --noEmit",
-    "db:migrate": "echo 'Run migrations via Supabase Dashboard SQL Editor or supabase db push. See README.md for details.'"
+    "db:migrate": "echo 'Run migrations via Supabase Dashboard SQL Editor or supabase db push. See README.md for details.'",
+    "db:migrate:001": "echo 'Copy migrations/001_init.sql to Supabase SQL Editor and run'",
+    "db:migrate:002": "echo 'Copy migrations/002_enable_rls.sql to Supabase SQL Editor and run'"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.0.10",
     "@supabase/supabase-js": "^2.39.3",
     "next": "14.1.0",
     "react": "^18.2.0",
