@@ -112,7 +112,7 @@ dentalcallinsights/
 {
   "dependencies": {
     "@supabase/supabase-js": "^2.39.3",
-    "next": "14.1.0",
+    "next": "14.2.33",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -121,7 +121,7 @@ dentalcallinsights/
     "@typescript-eslint/parser": "^6.19.1",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
-    "eslint-config-next": "14.1.0",
+    "eslint-config-next": "14.2.33",
     "eslint-config-prettier": "^9.1.0",
     "postcss": "^8.4.33",
     "prettier": "^3.2.4",
