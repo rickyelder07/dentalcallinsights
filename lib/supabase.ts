@@ -4,7 +4,6 @@
  */
 
 import { createBrowserClient as createBrowserSupabaseClient, createServerClient as createServerSupabaseClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
 // Validate environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -27,8 +26,11 @@ export function createBrowserClient() {
 /**
  * Create a Supabase client for server components
  * Handles cookie reading/writing for SSR
+ * IMPORTANT: Only call this from Server Components!
  */
 export function createServerClient() {
+  // Import cookies only when this function is called (in a Server Component)
+  const { cookies } = require('next/headers')
   const cookieStore = cookies()
   
   return createServerSupabaseClient(

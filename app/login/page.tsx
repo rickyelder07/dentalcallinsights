@@ -24,8 +24,15 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Redirect if already logged in
+  // Handle URL messages and redirect if already logged in
   useEffect(() => {
+    // Check for success messages
+    const message = searchParams.get('message')
+    if (message === 'email_confirmed') {
+      setSuccess('Email confirmed successfully! You can now log in.')
+    }
+
+    // Redirect if already logged in
     if (!authLoading && user) {
       const redirectTo = searchParams.get('redirectTo') || '/library'
       router.push(redirectTo)

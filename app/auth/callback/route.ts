@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const type = requestUrl.searchParams.get('type')
 
   if (code) {
     const supabase = createServerClient()
@@ -23,7 +24,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/library', requestUrl.origin))
+  // Handle different authentication flows
+  if (type === 'recovery') {
+    // Password reset flow - redirect to reset password page
+    return NextResponse.redirect(new URL('/reset-password?type=recovery', requestUrl.origin))
+  } else if (type === 'signup') {
+    // Email confirmation flow - redirect to login with success message
+    return NextResponse.redirect(new URL('/login?message=email_confirmed', requestUrl.origin))
+  } else {
+    // Default OAuth flow - redirect to library
+    return NextResponse.redirect(new URL('/library', requestUrl.origin))
+  }
 }
 

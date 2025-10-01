@@ -27,11 +27,17 @@ export default function ResetPasswordPage() {
   // Check if user came from password reset email
   useEffect(() => {
     const checkResetToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      // If there's a session and we have a recovery token, switch to update mode
       const type = searchParams.get('type')
-      if (type === 'recovery' || session) {
+      
+      // Check URL parameters first
+      if (type === 'recovery') {
+        setMode('update')
+        return
+      }
+      
+      // Check for existing session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
         setMode('update')
       }
     }

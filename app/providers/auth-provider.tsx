@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { createBrowserClient } from '@/lib/supabase'
+import { signOut as authSignOut } from '@/lib/auth'
 import type { User, Session, AuthState } from '@/types/auth'
 
 // Create auth context
@@ -105,20 +106,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Sign out helper
   const handleSignOut = useCallback(async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Error signing out:', error)
-        throw error
+      const result = await authSignOut()
+      
+      if (result.error) {
+        console.error('Error signing out:', result.error)
+        // Even if Supabase logout fails, clear local state
+        setUser(null)
+        setSession(null)
+        return // Don't throw error, just clear local state
       }
       
       // Clear local state
       setUser(null)
       setSession(null)
+      
+      // Force a page refresh to clear any cached session data
+      window.location.href = '/login'
     } catch (err) {
       console.error('Error signing out:', err)
-      throw err
+      // Even if there's an error, clear local state
+      setUser(null)
+      setSession(null)
+      // Force redirect to login to clear any cached data
+      window.location.href = '/login'
     }
-  }, [supabase.auth])
+  }, [])
 
   const value: AuthContextValue = {
     user,

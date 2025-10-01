@@ -39,11 +39,10 @@ export default function LogoutButton({
 
     try {
       await signOut()
-      router.push(redirectTo)
-      router.refresh() // Refresh to update server components
+      // AuthProvider will handle the redirect automatically
     } catch (error) {
       console.error('Logout error:', error)
-      alert('Failed to log out. Please try again.')
+      // The AuthProvider handles redirects, so this shouldn't happen
     } finally {
       setLoading(false)
     }
