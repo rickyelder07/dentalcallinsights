@@ -49,7 +49,7 @@ SELECT * FROM calls; -- Automatically filtered to user_id = current_user
 
 #### Option A: Email/Password Auth (Recommended for MVP)
 
-1. Go to **Authentication** → **Providers** in Supabase Dashboard
+1. Go to **Authentication > Configuration > Sign In / Providers** in Supabase Dashboard
 2. Enable **Email** provider
 3. Configure email settings:
    - ✅ Enable email confirmations (for production)
@@ -60,7 +60,7 @@ SELECT * FROM calls; -- Automatically filtered to user_id = current_user
 
 Enable social login (Google, GitHub, etc.):
 
-1. Go to **Authentication** → **Providers**
+1. Go to **Authentication > Configuration > Sign In / Providers**
 2. Click on provider (e.g., Google)
 3. Add OAuth credentials from provider
 4. Enable the provider

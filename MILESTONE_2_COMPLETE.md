@@ -339,7 +339,7 @@ dentalcallinsights/
 
 ### 1. Enable Authentication in Supabase
 
-1. Go to **Authentication** → **Providers** in Supabase Dashboard
+1. Go to **Authentication > Configuration > Sign In / Providers** in Supabase Dashboard
 2. Enable **Email** provider
 3. Configure settings:
    - ✅ Enable email confirmations (optional but recommended)

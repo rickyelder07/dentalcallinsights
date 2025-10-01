@@ -64,7 +64,7 @@ This installs `@supabase/auth-helpers-nextjs` and other packages.
 ### 2. Enable Email Auth in Supabase
 
 1. Open [Supabase Dashboard](https://app.supabase.com)
-2. Go to **Authentication** → **Providers**
+2. Go to **Authentication > Configuration > Sign In / Providers**
 3. Enable **Email** provider
 4. (Optional) Enable email confirmations and password recovery
 

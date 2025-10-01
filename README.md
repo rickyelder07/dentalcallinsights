@@ -83,7 +83,7 @@ npm install
 
 ### Step 4: Enable Email Authentication
 
-1. In your Supabase dashboard, go to **Authentication** → **Providers**
+1. In your Supabase dashboard, go to **Authentication > Configuration > Sign In / Providers**
 2. Enable the **Email** provider
 3. Configure settings (optional but recommended):
    - ✅ Enable email confirmations
