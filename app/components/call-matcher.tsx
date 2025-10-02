@@ -235,12 +235,18 @@ export default function CallMatcher({
               )}
             </div>
 
-            {/* Time difference */}
-            <div className="mt-3 pt-3 border-t border-gray-200">
+            {/* Time and duration difference */}
+            <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
               <p className="text-xs text-gray-500">
                 Time difference: {formatTimeDiff(match.time_diff_minutes)}
                 {match.time_diff_minutes > 0 ? ' earlier' : ' later'}
               </p>
+              {match.call_duration_seconds !== undefined && (
+                <p className="text-xs text-gray-500">
+                  Duration: {Math.floor(match.call_duration_seconds / 60)}m{' '}
+                  {match.call_duration_seconds % 60}s
+                </p>
+              )}
             </div>
 
             {/* Match reasons */}

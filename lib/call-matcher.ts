@@ -50,33 +50,37 @@ export class CallMatcher {
     };
 
     let score = 0;
-    let factors = 0;
+    let totalWeight = 0;
 
     // Time proximity factor (0-1, higher is better)
     const timeDiffMinutes = Math.abs(recordingTime.getTime() - csvTime.getTime()) / (1000 * 60);
     const timeScore = Math.max(0, 1 - (timeDiffMinutes / matchOptions.time_tolerance_minutes));
-    score += timeScore * 0.4; // 40% weight
-    factors += 0.4;
+    const timeWeight = 0.35; // 35% weight
+    score += timeScore * timeWeight;
+    totalWeight += timeWeight;
+
+    // Duration match factor - INCREASED WEIGHT
+    if (recordingDuration !== undefined && csvDuration !== undefined) {
+      const durationDiff = Math.abs(recordingDuration - csvDuration);
+      // Use exponential decay for duration - exact matches score much higher
+      const durationScore = Math.max(0, 1 - (durationDiff / matchOptions.duration_tolerance_seconds));
+      const durationWeight = 0.40; // 40% weight (increased from 20%)
+      score += durationScore * durationWeight;
+      totalWeight += durationWeight;
+    }
 
     // Phone number match factor
     if (matchOptions.phone_number_match && recordingPhone && (csvSourcePhone || csvDestinationPhone)) {
       const phoneMatch = recordingPhone === csvSourcePhone || recordingPhone === csvDestinationPhone;
       if (phoneMatch) {
-        score += 0.4; // 40% weight
+        const phoneWeight = 0.25; // 25% weight
+        score += phoneWeight; // Full points for exact match
+        totalWeight += phoneWeight;
       }
-      factors += 0.4;
     }
 
-    // Duration match factor
-    if (recordingDuration && csvDuration) {
-      const durationDiff = Math.abs(recordingDuration - csvDuration);
-      const durationScore = Math.max(0, 1 - (durationDiff / matchOptions.duration_tolerance_seconds));
-      score += durationScore * 0.2; // 20% weight
-      factors += 0.2;
-    }
-
-    // Normalize score
-    return factors > 0 ? score / factors : 0;
+    // Normalize score by total weight used
+    return totalWeight > 0 ? score / totalWeight : 0;
   }
 
   /**

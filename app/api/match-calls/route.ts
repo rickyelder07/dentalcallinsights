@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
       time_to_answer_seconds?: number;
       match_score: number;
       time_diff_minutes: number;
+      duration_diff_seconds?: number;
+      match_reasons: string[];
     }
 
     const scoredMatches: ScoredMatch[] = (matches || []).map((match: any) => {
@@ -104,6 +106,26 @@ export async function POST(request: NextRequest) {
         matchingOptions
       );
 
+      // Calculate duration difference
+      const durationDiff = duration && match.call_duration_seconds
+        ? Math.abs(duration - match.call_duration_seconds)
+        : undefined;
+
+      // Build match reasons
+      const reasons: string[] = [];
+      if (Math.abs(match.time_diff_minutes) < 1) reasons.push('Exact time match');
+      else if (Math.abs(match.time_diff_minutes) < 2) reasons.push('Close time match');
+      
+      if (durationDiff !== undefined) {
+        if (durationDiff === 0) reasons.push('Exact duration match');
+        else if (durationDiff <= 5) reasons.push('Very close duration');
+        else if (durationDiff <= 30) reasons.push('Similar duration');
+      }
+
+      if (phoneNumber && (match.source_number === phoneNumber || match.destination_number === phoneNumber)) {
+        reasons.push('Phone number match');
+      }
+
       return {
         csv_id: match.csv_id,
         call_time: match.call_time,
@@ -116,11 +138,19 @@ export async function POST(request: NextRequest) {
         time_to_answer_seconds: match.time_to_answer_seconds,
         match_score: score,
         time_diff_minutes: match.time_diff_minutes,
+        duration_diff_seconds: durationDiff,
+        match_reasons: reasons,
       };
     });
 
-    // Sort by match score (highest first)
-    scoredMatches.sort((a: ScoredMatch, b: ScoredMatch) => b.match_score - a.match_score);
+    // Sort by match score (highest first), then by time difference
+    scoredMatches.sort((a: ScoredMatch, b: ScoredMatch) => {
+      if (Math.abs(b.match_score - a.match_score) > 0.01) {
+        return b.match_score - a.match_score;
+      }
+      // If scores are very close, prefer closer time match
+      return Math.abs(a.time_diff_minutes) - Math.abs(b.time_diff_minutes);
+    });
 
     return NextResponse.json({
       success: true,

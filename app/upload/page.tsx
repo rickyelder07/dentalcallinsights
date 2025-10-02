@@ -42,10 +42,23 @@ export default function UploadPage() {
     setError(null);
 
     try {
+      // Combine date and time into ISO string if both provided
+      let callDateTime = null;
+      if (formMetadata.call_date && formMetadata.call_time) {
+        callDateTime = `${formMetadata.call_date}T${formMetadata.call_time}:00`;
+      } else if (formMetadata.call_date) {
+        callDateTime = `${formMetadata.call_date}T12:00:00`;
+      }
+
+      const enrichedMetadata = {
+        ...formMetadata,
+        call_datetime: callDateTime,
+      };
+
       // Create FormData for upload
       const formData = new FormData();
       formData.append('file', selectedAudioFile!);
-      formData.append('metadata', JSON.stringify(formMetadata));
+      formData.append('metadata', JSON.stringify(enrichedMetadata));
 
       // Upload file
       const response = await fetch('/api/upload', {
@@ -61,10 +74,9 @@ export default function UploadPage() {
 
       setUploadedCallId(result.callId);
 
-      // Check if there are potential matches
-      if (result.potentialMatches && result.potentialMatches.length > 0) {
-        setPotentialMatches(result.potentialMatches);
-        setCurrentStep('match-calls');
+      // Try to find matches if we have date/time and CSV data is already uploaded
+      if (csvUploaded && callDateTime) {
+        await findMatchesForCall(result.callId, callDateTime, formMetadata.duration);
       } else {
         setCurrentStep('complete');
       }
@@ -99,9 +111,17 @@ export default function UploadPage() {
 
         setCsvUploaded(true);
         
-        // If we have an uploaded call, try to find matches
-        if (uploadedCallId && metadata.call_time) {
-          await findMatches();
+        // If we have an uploaded call with date/time, try to find matches
+        if (uploadedCallId && (metadata.call_date || metadata.call_time)) {
+          const callDateTime = metadata.call_date && metadata.call_time
+            ? `${metadata.call_date}T${metadata.call_time}:00`
+            : metadata.call_date
+            ? `${metadata.call_date}T12:00:00`
+            : null;
+          
+          if (callDateTime) {
+            await findMatchesForCall(uploadedCallId, callDateTime, metadata.duration);
+          }
         }
       } catch (err) {
         console.error('CSV upload error:', err);
@@ -110,10 +130,8 @@ export default function UploadPage() {
     }
   };
 
-  // Find matches for uploaded call
-  const findMatches = async () => {
-    if (!uploadedCallId) return;
-
+  // Find matches for uploaded call based on date/time and duration
+  const findMatchesForCall = async (callId: string, callDateTime: string, duration?: number) => {
     try {
       const response = await fetch('/api/match-calls', {
         method: 'POST',
@@ -121,10 +139,16 @@ export default function UploadPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          callId: uploadedCallId,
-          callTime: metadata.call_time || metadata.call_date,
+          callId,
+          callTime: callDateTime,
           phoneNumber: metadata.phone_number,
-          duration: metadata.duration,
+          duration: duration || undefined,
+          options: {
+            time_tolerance_minutes: 5,
+            phone_number_match: true,
+            duration_tolerance_seconds: 5, // Tighter tolerance - within 5 seconds
+            require_disposition_match: false,
+          },
         }),
       });
 
@@ -133,10 +157,14 @@ export default function UploadPage() {
       if (response.ok && result.matches && result.matches.length > 0) {
         setPotentialMatches(result.matches);
         setCurrentStep('match-calls');
+      } else {
+        // No matches found, proceed to complete
+        setCurrentStep('complete');
       }
     } catch (err) {
       console.error('Match finding error:', err);
-      // Don't show error - matching is optional
+      // Don't show error - matching is optional, proceed to complete
+      setCurrentStep('complete');
     }
   };
 
@@ -352,9 +380,34 @@ export default function UploadPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 Upload Complete!
               </h2>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 mb-4">
                 Your call recording has been successfully uploaded and is ready for processing.
               </p>
+              
+              {/* Manual matching option */}
+              {csvUploaded && uploadedCallId && (metadata.call_date || metadata.call_time) && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800 mb-3">
+                    CSV data is available. Would you like to match this recording with your CSV call data?
+                  </p>
+                  <button
+                    onClick={() => {
+                      const callDateTime = metadata.call_date && metadata.call_time
+                        ? `${metadata.call_date}T${metadata.call_time}:00`
+                        : metadata.call_date
+                        ? `${metadata.call_date}T12:00:00`
+                        : null;
+                      if (callDateTime) {
+                        findMatchesForCall(uploadedCallId, callDateTime, metadata.duration);
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Find Matching CSV Records
+                  </button>
+                </div>
+              )}
+
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => router.push('/library')}
