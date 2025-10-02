@@ -1,40 +1,77 @@
 # DentalCallInsights - Project Structure
 
+**Current Status:** ✅ Milestone 2 Complete, 🚧 Milestone 3 In Progress  
+**Branch:** `milestone/03-audio-upload-and-storage`  
+**Last Updated:** December 2024
+
 ```
 dentalcallinsights/
 │
 ├── 📱 APPLICATION (Next.js App Router)
 │   └── app/
-│       ├── globals.css              # TailwindCSS styles + custom CSS
-│       ├── layout.tsx               # Root layout with navigation header
-│       ├── page.tsx                 # Landing page with hero + features
-│       │
-│       ├── upload/
-│       │   └── page.tsx            # Upload page (placeholder)
-│       │
-│       ├── library/
-│       │   └── page.tsx            # Call library (placeholder)
-│       │
-│       ├── qa/
-│       │   └── page.tsx            # QA dashboard (placeholder)
-│       │
-│       └── login/
-│           └── page.tsx            # Login page (placeholder)
+│       ├── auth/                   # ✅ Authentication routes
+│       │   └── callback/
+│       │       └── route.ts        # OAuth/email confirmation callback
+│       ├── components/             # ✅ Reusable React components
+│       │   ├── auth-error-boundary.tsx
+│       │   ├── logout-button.tsx
+│       │   ├── navigation.tsx
+│       │   └── protected-route.tsx
+│       ├── providers/              # ✅ Context providers
+│       │   └── auth-provider.tsx   # Global auth state management
+│       ├── login/                  # ✅ Complete authentication
+│       │   └── page.tsx           # Login page with validation
+│       ├── signup/                 # ✅ Complete authentication
+│       │   └── page.tsx           # Sign up page with password strength
+│       ├── profile/                # ✅ Complete user management
+│       │   └── page.tsx           # User profile & password change
+│       ├── reset-password/         # ✅ Complete password reset
+│       │   └── page.tsx           # Password reset flow
+│       ├── upload/                 # 🚧 In Progress (Milestone 3)
+│       │   └── page.tsx           # Audio upload interface
+│       ├── library/                # 📅 Planned (Milestone 7)
+│       │   └── page.tsx           # Call library with search
+│       ├── qa/                     # 📅 Planned (Milestone 8)
+│       │   └── page.tsx           # QA dashboard
+│       ├── globals.css             # TailwindCSS styles + custom CSS
+│       ├── layout.tsx              # Root layout with AuthProvider
+│       └── page.tsx                # Landing page with hero + features
 │
 ├── 📚 LIBRARIES
-│   └── lib/
-│       └── supabase.ts             # Supabase client + TypeScript types
+│   ├── lib/
+│   │   ├── auth.ts                 # ✅ Authentication utilities
+│   │   ├── supabase.ts             # Supabase client + TypeScript types
+│   │   ├── csv-parser.ts           # 🚧 CSV parsing utilities
+│   │   └── call-matcher.ts         # 🚧 Call matching logic
+│   └── types/
+│       ├── auth.ts                 # ✅ TypeScript auth types
+│       └── csv.ts                  # 🚧 CSV data types
 │
 ├── 🗄️ DATABASE
 │   └── migrations/
-│       └── 001_init.sql            # Schema: calls, transcripts, embeddings
-│                                    # - pgvector extension
-│                                    # - Optimized indexes (GIN, FTS, ivfflat)
-│                                    # - search_embeddings() function
-│                                    # - RLS policies (commented)
+│       ├── 001_init.sql            # Schema: calls, transcripts, embeddings
+│       │                           # - pgvector extension
+│       │                           # - Optimized indexes (GIN, FTS, ivfflat)
+│       │                           # - search_embeddings() function
+│       ├── 002_enable_rls.sql      # ✅ Row Level Security policies
+│       │                           # - User data isolation
+│       │                           # - Secure multi-tenant access
+│       └── 004_csv_call_data.sql  # 🚧 CSV call data table and matching
+│                                   # - csv_call_data table
+│                                   # - Call matching functions
+│                                   # - RLS policies for CSV data
+│
+├── 🔐 SECURITY
+│   └── middleware.ts               # ✅ Route protection middleware
+│                                   # - Protected routes: /upload, /library, /qa, /profile
+│                                   # - Session refresh on every request
+│                                   # - Redirect logic for auth routes
 │
 ├── ⚙️ CONFIGURATION
 │   ├── package.json                # Dependencies + NPM scripts
+│   │                               # - @supabase/ssr for auth helpers
+│   │                               # - Next.js 14.2.33
+│   │                               # - TypeScript strict mode
 │   ├── tsconfig.json               # TypeScript strict mode config
 │   ├── next.config.js              # Next.js config
 │   ├── tailwind.config.ts          # TailwindCSS with custom colors
@@ -45,17 +82,22 @@ dentalcallinsights/
 │
 ├── 🔑 ENVIRONMENT
 │   └── env.example.txt             # Environment variables template
-│                                    # - NEXT_PUBLIC_SUPABASE_URL
-│                                    # - NEXT_PUBLIC_SUPABASE_ANON_KEY
-│                                    # - SUPABASE_SERVICE_ROLE_KEY
-│                                    # - OPENAI_API_KEY
+│                                   # - NEXT_PUBLIC_SUPABASE_URL
+│                                   # - NEXT_PUBLIC_SUPABASE_ANON_KEY
+│                                   # - SUPABASE_SERVICE_ROLE_KEY
+│                                   # - OPENAI_API_KEY
+│                                   # - Detailed security notes
 │
 └── 📝 DOCUMENTATION
-    ├── README.md                   # Complete setup guide (350+ lines)
+    ├── README.md                   # Complete setup guide + current status
     ├── CODEFLOW.md                 # Architecture + 8-milestone roadmap
     ├── SETUP_INSTRUCTIONS.md       # Quick-start guide (5 min setup)
+    ├── AUTHENTICATION_SETUP.md     # ✅ RLS testing & security guide
+    ├── QUICK_START_AUTH.md         # ✅ Auth quick-start guide
+    ├── MILESTONE_1_COMPLETE.md     # ✅ Milestone 1 completion summary
+    ├── MILESTONE_2_COMPLETE.md     # ✅ Milestone 2 completion summary
+    ├── CSV_UPLOAD_AND_MATCHING.md  # 🚧 CSV upload and matching guide
     ├── GIT_COMMIT_MESSAGE.md       # Git workflow guidance
-    ├── MILESTONE_1_COMPLETE.md     # Completion summary
     └── PROJECT_STRUCTURE.md        # This file
 ```
 
@@ -63,14 +105,16 @@ dentalcallinsights/
 
 ## 📊 File Statistics
 
-| Category          | Files | Lines of Code |
-| ----------------- | ----- | ------------- |
-| **Application**   | 7     | ~600          |
-| **Libraries**     | 1     | ~60           |
-| **Database**      | 1     | ~220          |
-| **Configuration** | 8     | ~150          |
-| **Documentation** | 6     | ~1,200        |
-| **TOTAL**         | 23    | ~2,230        |
+| Category          | Files | Lines of Code | Status |
+| ----------------- | ----- | ------------- | ------ |
+| **Application**   | 15    | ~2,400        | ✅ Auth Complete, 🚧 Upload In Progress |
+| **Components**    | 4     | ~800          | ✅ All Auth Components Complete |
+| **Libraries**     | 2     | ~200          | ✅ Auth Utils + Supabase Client |
+| **Database**      | 2     | ~400          | ✅ Schema + RLS Policies |
+| **Security**      | 1     | ~130          | ✅ Middleware Complete |
+| **Configuration** | 8     | ~150          | ✅ All Configured |
+| **Documentation** | 9     | ~2,000        | ✅ Comprehensive Docs |
+| **TOTAL**         | 41    | ~6,080        | 🚧 Milestone 3 In Progress |
 
 ---
 
@@ -87,9 +131,9 @@ dentalcallinsights/
 
 - **Database:** Supabase (PostgreSQL 15+)
 - **Vector Search:** pgvector extension
-- **Auth:** Supabase Auth (not yet implemented)
-- **Storage:** Supabase Storage (not yet implemented)
-- **API:** Next.js API Routes (to be added)
+- **Auth:** Supabase Auth (✅ Complete - email/password, RLS enabled)
+- **Storage:** Supabase Storage (🚧 In Progress - Milestone 3)
+- **API:** Next.js API Routes (📅 Planned - transcription, AI analysis)
 
 ### AI/ML (Planned)
 
@@ -111,12 +155,16 @@ dentalcallinsights/
 ```json
 {
   "dependencies": {
+    "@supabase/ssr": "^0.0.10",        // ✅ Auth helpers for Next.js
     "@supabase/supabase-js": "^2.39.3",
-    "next": "14.2.33",
+    "next": "^14.2.33",                // ✅ Updated to latest
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "autoprefixer": "^10.4.17",

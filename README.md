@@ -21,8 +21,16 @@ Transform dental call recordings into actionable insights with AI-powered transc
 - ✅ Password reset flow
 - ✅ Session persistence and auto-refresh
 
-### 🚧 In Progress (Future Milestones)
+### 🚧 In Progress (Milestone 3)
 - ⏳ Audio file upload and storage
+- ⏳ File upload component with drag-and-drop
+- ⏳ Supabase Storage integration
+- ⏳ Upload progress and validation
+- ⏳ Metadata form (patient ID, call type, etc.)
+- ⏳ CSV call data upload and matching
+- ⏳ Call recording to CSV data correlation
+
+### 📅 Planned (Future Milestones)
 - ⏳ Automatic transcription of call recordings
 - ⏳ AI-generated summaries and sentiment analysis
 - ⏳ Vector embeddings for semantic search
@@ -34,18 +42,34 @@ Transform dental call recordings into actionable insights with AI-powered transc
 ```
 .
 ├── app/                    # Next.js App Router
+│   ├── auth/              # Authentication routes
+│   │   └── callback/      # OAuth/email confirmation callback
+│   ├── components/        # Reusable React components
+│   │   ├── auth-error-boundary.tsx
+│   │   ├── logout-button.tsx
+│   │   ├── navigation.tsx
+│   │   └── protected-route.tsx
+│   ├── providers/         # Context providers
+│   │   └── auth-provider.tsx
+│   ├── login/             # Login page (✅ Complete)
+│   ├── signup/            # Sign up page (✅ Complete)
+│   ├── profile/           # User profile page (✅ Complete)
+│   ├── reset-password/    # Password reset flow (✅ Complete)
+│   ├── upload/            # Upload page (🚧 In Progress)
+│   ├── library/           # Call library page (📅 Planned)
+│   ├── qa/                # QA dashboard (📅 Planned)
 │   ├── layout.tsx         # Root layout with navigation
 │   ├── page.tsx           # Home page
-│   ├── globals.css        # Global styles with Tailwind
-│   ├── upload/            # Upload page (TODO)
-│   ├── library/           # Call library page (TODO)
-│   ├── qa/                # QA dashboard (TODO)
-│   └── login/             # Auth pages (TODO)
+│   └── globals.css        # Global styles with Tailwind
 ├── lib/
+│   ├── auth.ts            # Authentication utilities (✅ Complete)
 │   └── supabase.ts        # Supabase client configuration
+├── types/
+│   └── auth.ts            # TypeScript auth types (✅ Complete)
 ├── migrations/
-│   └── 001_init.sql       # Initial database schema
-├── components/            # Reusable React components (TODO)
+│   ├── 001_init.sql       # Initial database schema
+│   └── 002_enable_rls.sql # Row Level Security policies
+├── middleware.ts          # Route protection middleware (✅ Complete)
 ├── .env.example.txt       # Environment variables template
 └── README.md              # This file
 ```
@@ -196,6 +220,7 @@ id UUID PRIMARY KEY
 user_id UUID NOT NULL
 audio_path TEXT NOT NULL
 metadata JSONB DEFAULT '{}'
+csv_call_id UUID -- Links to csv_call_data table
 created_at TIMESTAMPTZ
 updated_at TIMESTAMPTZ
 ```
@@ -205,6 +230,35 @@ updated_at TIMESTAMPTZ
 - `user_id` - for user-specific queries
 - `created_at` - for time-based sorting
 - `metadata` (GIN) - for flexible JSONB queries
+- `csv_call_id` - for CSV data correlation
+
+### `csv_call_data` Table
+
+Stores uploaded CSV call data for matching with recordings.
+
+```sql
+id UUID PRIMARY KEY
+user_id UUID NOT NULL
+call_time TIMESTAMPTZ NOT NULL
+call_direction TEXT -- 'Inbound' or 'Outbound'
+source_number TEXT
+source_name TEXT
+source_extension TEXT
+destination_number TEXT
+destination_extension TEXT
+call_duration_seconds INTEGER
+disposition TEXT -- 'answered', 'voicemail', etc.
+time_to_answer_seconds INTEGER
+call_flow TEXT
+created_at TIMESTAMPTZ
+```
+
+**Indexes:**
+
+- `user_id` - for user-specific queries
+- `call_time` - for time-based matching
+- `source_number` - for phone number matching
+- `destination_number` - for destination matching
 
 ### `transcripts` Table
 
@@ -324,12 +378,14 @@ See `AUTHENTICATION_SETUP.md` for detailed instructions on testing Row Level Sec
 - ✅ Password reset flow
 - ✅ Session management with auto-refresh
 
-### Milestone 3: Audio Upload & Storage
+### 🚧 Milestone 3: Audio Upload & Storage (In Progress)
 
 - [ ] File upload component with drag-and-drop
 - [ ] Supabase Storage integration
 - [ ] Upload progress and validation
 - [ ] Metadata form (patient ID, call type, etc.)
+- [ ] File type and size validation
+- [ ] Storage bucket configuration with RLS
 
 ### Milestone 4: Transcription Pipeline
 

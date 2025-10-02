@@ -4,6 +4,8 @@
 
 Milestone 2 is complete! Here's what was added to your project:
 
+**Current Status:** 🚧 Milestone 3 In Progress (Audio Upload & Storage)
+
 ### 📁 New Files (15)
 ```
 app/
@@ -179,7 +181,9 @@ Authentication is complete and tested. You can now:
 - Access user data securely
 - Build features with user context
 
-**Next Milestone:** Audio Upload & Storage
+**Current Milestone:** Audio Upload & Storage (In Progress)
+
+See `MILESTONE_3_IN_PROGRESS.md` for current development status.
 
 ---
 

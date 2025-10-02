@@ -1,23 +1,37 @@
 # 🚀 DentalCallInsights - Quick Setup Guide
 
-## ✅ Milestone 1: Complete Project Scaffold
+## ✅ Milestone 2: Complete Authentication & Security
+
+**Current Status:** 🚧 Milestone 3 In Progress (Audio Upload & Storage)  
+**Branch:** `milestone/03-audio-upload-and-storage`
 
 ### 📁 What's Included
 
 ```
 dentalcallinsights/
 ├── app/                      # Next.js App Router
+│   ├── auth/                # ✅ Authentication routes
+│   ├── components/          # ✅ Reusable components
+│   ├── providers/           # ✅ Context providers
+│   ├── login/               # ✅ Complete login page
+│   ├── signup/              # ✅ Complete signup page
+│   ├── profile/             # ✅ Complete profile page
+│   ├── reset-password/      # ✅ Complete password reset
+│   ├── upload/              # 🚧 Upload page (in progress)
+│   ├── library/             # 📅 Library page (planned)
+│   ├── qa/                  # 📅 QA page (planned)
 │   ├── globals.css          # Tailwind styles
-│   ├── layout.tsx           # Root layout with nav
-│   ├── page.tsx             # Landing page
-│   ├── upload/page.tsx      # Upload page (placeholder)
-│   ├── library/page.tsx     # Library page (placeholder)
-│   ├── qa/page.tsx          # QA page (placeholder)
-│   └── login/page.tsx       # Login page (placeholder)
+│   ├── layout.tsx           # Root layout with AuthProvider
+│   └── page.tsx             # Landing page
 ├── lib/
+│   ├── auth.ts              # ✅ Authentication utilities
 │   └── supabase.ts          # Supabase client config
+├── types/
+│   └── auth.ts              # ✅ TypeScript auth types
 ├── migrations/
-│   └── 001_init.sql         # Database schema
+│   ├── 001_init.sql         # Database schema
+│   └── 002_enable_rls.sql   # ✅ Row Level Security
+├── middleware.ts            # ✅ Route protection
 ├── .eslintrc.json           # ESLint config
 ├── .prettierrc              # Prettier config
 ├── .gitignore               # Git ignore rules
@@ -28,6 +42,8 @@ dentalcallinsights/
 ├── postcss.config.js        # PostCSS config
 ├── env.example.txt          # Environment template
 ├── README.md                # Complete documentation
+├── AUTHENTICATION_SETUP.md  # ✅ Auth setup guide
+├── MILESTONE_2_COMPLETE.md  # ✅ Auth completion summary
 └── CODEFLOW.md              # Architecture & roadmap
 ```
 
@@ -88,9 +104,9 @@ Visit **http://localhost:3000** 🎉
 3. Click **Enable** on the **pgvector** extension
 4. Wait for confirmation (should be instant)
 
-### Step 4: Run Database Migration
+### Step 4: Run Database Migrations
 
-**Option A: Using Supabase Dashboard (Easiest)**
+**Migration 001 - Initial Schema:**
 
 1. Go to **SQL Editor** in Supabase dashboard
 2. Click **New Query**
@@ -99,7 +115,18 @@ Visit **http://localhost:3000** 🎉
 5. Paste into the SQL Editor
 6. Click **RUN**
 7. Verify success (should see "Success. No rows returned")
-8. Go to **Table Editor** and confirm you see:
+
+**Migration 002 - Row Level Security:**
+
+1. In SQL Editor, click **New Query**
+2. Open `migrations/002_enable_rls.sql` from your project
+3. Copy the entire file contents
+4. Paste into the SQL Editor
+5. Click **RUN**
+6. Verify success (should see "Success. No rows returned")
+
+**Verify Tables Created:**
+Go to **Table Editor** and confirm you see:
    - `calls` table
    - `transcripts` table
    - `embeddings` table

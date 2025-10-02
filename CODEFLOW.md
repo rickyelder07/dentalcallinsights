@@ -1,6 +1,9 @@
 # DentalCallInsights - Development Flow & Architecture
 
-## Current Status: ✅ Milestone 2 Complete (Authentication & RLS)
+## Current Status: 🚧 Milestone 3 In Progress (Audio Upload & Storage)
+
+**Branch:** `milestone/03-audio-upload-and-storage`  
+**Last Updated:** December 2024
 
 ### Milestone 1 Complete ✅
 - Next.js 14 + TypeScript scaffold with App Router
@@ -21,6 +24,14 @@
 - AuthProvider context for global auth state
 - Type-safe auth utilities and validation
 - Comprehensive error handling
+
+### Milestone 3 In Progress 🚧
+- Audio file upload interface development
+- Supabase Storage bucket configuration
+- File upload component with drag-and-drop
+- Upload progress indicators and validation
+- Metadata form for call information
+- Storage RLS policies for user isolation
 
 ## Architecture Overview
 
@@ -54,10 +65,12 @@
                     │     - transcripts table (RLS: via calls join)
                     │     - embeddings table (RLS: via calls join)
                     │
-                    ├──→ Supabase Storage (Coming soon)
+                    ├──→ Supabase Storage (🚧 In Progress)
                     │     - MP3 file storage
+                    │     - RLS policies for user isolation
+                    │     - Upload progress tracking
                     │
-                    └──→ OpenAI API (Coming soon)
+                    └──→ OpenAI API (📅 Planned)
                           - Whisper (transcription)
                           - GPT-4 (summarization)
                           - Embeddings (semantic search)
@@ -215,7 +228,7 @@ Key Benefits:
 
 ---
 
-### 📤 Milestone 3: Upload & Storage (Week 2)
+### 🚧 Milestone 3: Upload & Storage (In Progress)
 
 **Why next:** Foundation for all processing
 
@@ -224,17 +237,31 @@ Key Benefits:
 - [ ] Upload progress indicator
 - [ ] Metadata form (patient ID, call type, date, tags)
 - [ ] Client-side validation (file type, size)
+- [ ] Storage RLS policies for user isolation
+- [ ] Upload error handling and retry logic
+- [ ] CSV call data upload functionality
+- [ ] Call recording to CSV data matching system
+- [ ] CSV data validation and parsing
 
 **Files to create:**
 
 - `components/AudioUploader.tsx`
+- `components/CsvUploader.tsx`
+- `components/CallMatcher.tsx`
 - `app/api/upload/route.ts` (server-side handler)
+- `app/api/csv-upload/route.ts` (CSV upload handler)
+- `app/api/match-calls/route.ts` (call matching API)
 - `lib/storage.ts` (Supabase Storage helpers)
+- `lib/csv-parser.ts` (CSV parsing utilities)
+- `lib/call-matcher.ts` (call matching logic)
+- `types/upload.ts` (Upload-related types)
+- `types/csv.ts` (CSV data types)
 
 **Supabase setup:**
 
 - Create storage bucket: `call-recordings`
-- Set appropriate RLS policies
+- Set appropriate RLS policies for user isolation
+- Configure file size limits and allowed types
 
 ---
 
