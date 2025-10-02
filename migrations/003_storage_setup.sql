@@ -46,9 +46,15 @@ ALTER TABLE calls ADD CONSTRAINT calls_storage_path_required
 -- STORAGE RLS POLICIES
 -- ============================================
 
+-- Drop existing policies if they exist (for re-running migration)
+DROP POLICY IF EXISTS "Users can view own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own files" ON storage.objects;
+
 -- Policy: Users can view their own files
 -- This policy allows users to SELECT their own files from storage
-CREATE POLICY IF NOT EXISTS "Users can view own files"
+CREATE POLICY "Users can view own files"
 ON storage.objects FOR SELECT
 USING (
     bucket_id = 'call-recordings' 
@@ -57,7 +63,7 @@ USING (
 
 -- Policy: Users can upload files to their own folder
 -- This policy allows users to INSERT files into their folder
-CREATE POLICY IF NOT EXISTS "Users can upload own files"
+CREATE POLICY "Users can upload own files"
 ON storage.objects FOR INSERT
 WITH CHECK (
     bucket_id = 'call-recordings'
@@ -66,7 +72,7 @@ WITH CHECK (
 
 -- Policy: Users can update their own files
 -- This policy allows users to UPDATE their own files
-CREATE POLICY IF NOT EXISTS "Users can update own files"
+CREATE POLICY "Users can update own files"
 ON storage.objects FOR UPDATE
 USING (
     bucket_id = 'call-recordings'
@@ -75,7 +81,7 @@ USING (
 
 -- Policy: Users can delete their own files
 -- This policy allows users to DELETE their own files
-CREATE POLICY IF NOT EXISTS "Users can delete own files"
+CREATE POLICY "Users can delete own files"
 ON storage.objects FOR DELETE
 USING (
     bucket_id = 'call-recordings'

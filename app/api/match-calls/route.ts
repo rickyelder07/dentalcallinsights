@@ -78,7 +78,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate match scores for each potential match
-    const scoredMatches = (matches || []).map((match: any) => {
+    interface ScoredMatch {
+      csv_id: string;
+      call_time: string;
+      call_direction: 'Inbound' | 'Outbound';
+      source_number?: string;
+      source_name?: string;
+      destination_number?: string;
+      call_duration_seconds?: number;
+      disposition?: string;
+      time_to_answer_seconds?: number;
+      match_score: number;
+      time_diff_minutes: number;
+    }
+
+    const scoredMatches: ScoredMatch[] = (matches || []).map((match: any) => {
       const score = CallMatcher.calculateMatchScore(
         callTimeDate,
         new Date(match.call_time),
@@ -106,7 +120,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Sort by match score (highest first)
-    scoredMatches.sort((a, b) => b.match_score - a.match_score);
+    scoredMatches.sort((a: ScoredMatch, b: ScoredMatch) => b.match_score - a.match_score);
 
     return NextResponse.json({
       success: true,

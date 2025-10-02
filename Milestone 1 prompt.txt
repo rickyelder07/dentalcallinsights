@@ -1,8 +1,3 @@
-# HISTORICAL FILE - Milestone 1 Original Prompt
-# This file contains the original prompt used to create the project scaffold
-# Current Status: ✅ Milestone 2 Complete, 🚧 Milestone 3 In Progress
-# Branch: milestone/03-audio-upload-and-storage
-
 You are an expert full-stack engineer and will act as my Cursor copilot. Project: "DentalCallInsights" — a Next.js + Supabase web app for turning call MP3s + call metadata into searchable transcripts, summaries, sentiment, embeddings, and basic analytics. I need you to scaffold a complete starter repo and provide migration SQL.
 
 Requirements & constraints:

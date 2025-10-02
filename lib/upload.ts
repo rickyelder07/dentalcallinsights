@@ -20,7 +20,7 @@ export async function uploadAudioFile(
   request: AudioUploadRequest,
   onProgress?: (progress: UploadProgress) => void
 ): Promise<AudioUploadResponse> {
-  const { file, metadata, userId } = request;
+  const { file, userId } = request;
 
   // Generate unique upload ID
   const uploadId = crypto.randomUUID();

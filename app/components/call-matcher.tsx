@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { CallMatch, MatchQuality } from '@/types/csv';
+import type { CallMatch } from '@/types/csv';
 
 interface CallMatcherProps {
   matches: CallMatch[];
@@ -114,9 +114,9 @@ export default function CallMatcher({
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             No matches found
           </h3>
-          <p className="text-sm text-gray-500 mb-6">
-            We couldn't find any matching CSV records for this recording.
-          </p>
+              <p className="text-sm text-gray-500 mb-6">
+                We could not find any matching CSV records for this recording.
+              </p>
           <button
             onClick={onSkip}
             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"

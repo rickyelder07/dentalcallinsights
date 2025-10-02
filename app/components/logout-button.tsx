@@ -6,7 +6,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/providers/auth-provider'
 
 interface LogoutButtonProps {
@@ -14,16 +13,12 @@ interface LogoutButtonProps {
   className?: string
   /** Show confirmation modal before logout */
   confirmBeforeLogout?: boolean
-  /** Redirect path after logout (default: /login) */
-  redirectTo?: string
 }
 
 export default function LogoutButton({
   className = '',
   confirmBeforeLogout = false,
-  redirectTo = '/login',
 }: LogoutButtonProps) {
-  const router = useRouter()
   const { signOut } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)

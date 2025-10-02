@@ -12,11 +12,11 @@ export class CallMatcher {
    * Find potential CSV matches for a call recording
    */
   public static async findMatches(
-    userId: string,
-    callTime: Date,
-    phoneNumber?: string,
-    duration?: number,
-    options: CallMatchingOptions = {
+    _userId: string,
+    _callTime: Date,
+    _phoneNumber?: string,
+    _duration?: number,
+    _options: CallMatchingOptions = {
       time_tolerance_minutes: 5,
       phone_number_match: true,
       duration_tolerance_seconds: 30,
@@ -39,19 +39,27 @@ export class CallMatcher {
     csvDestinationPhone?: string,
     recordingDuration?: number,
     csvDuration?: number,
-    options: CallMatchingOptions
+    options?: CallMatchingOptions
   ): number {
+    // Use default options if not provided
+    const matchOptions: CallMatchingOptions = options || {
+      time_tolerance_minutes: 5,
+      phone_number_match: true,
+      duration_tolerance_seconds: 30,
+      require_disposition_match: false,
+    };
+
     let score = 0;
     let factors = 0;
 
     // Time proximity factor (0-1, higher is better)
     const timeDiffMinutes = Math.abs(recordingTime.getTime() - csvTime.getTime()) / (1000 * 60);
-    const timeScore = Math.max(0, 1 - (timeDiffMinutes / options.time_tolerance_minutes));
+    const timeScore = Math.max(0, 1 - (timeDiffMinutes / matchOptions.time_tolerance_minutes));
     score += timeScore * 0.4; // 40% weight
     factors += 0.4;
 
     // Phone number match factor
-    if (options.phone_number_match && recordingPhone && (csvSourcePhone || csvDestinationPhone)) {
+    if (matchOptions.phone_number_match && recordingPhone && (csvSourcePhone || csvDestinationPhone)) {
       const phoneMatch = recordingPhone === csvSourcePhone || recordingPhone === csvDestinationPhone;
       if (phoneMatch) {
         score += 0.4; // 40% weight
@@ -62,7 +70,7 @@ export class CallMatcher {
     // Duration match factor
     if (recordingDuration && csvDuration) {
       const durationDiff = Math.abs(recordingDuration - csvDuration);
-      const durationScore = Math.max(0, 1 - (durationDiff / options.duration_tolerance_seconds));
+      const durationScore = Math.max(0, 1 - (durationDiff / matchOptions.duration_tolerance_seconds));
       score += durationScore * 0.2; // 20% weight
       factors += 0.2;
     }

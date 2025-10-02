@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
  * GET /api/upload
  * Get user's uploaded files
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = createServerClient();
     const {

@@ -11,7 +11,6 @@ import {
   CsvValidationResult, 
   CsvValidationError, 
   CsvValidationWarning,
-  CSV_HEADERS,
   EXPECTED_CSV_COLUMNS,
   VALID_CALL_DIRECTIONS,
   COMMON_DISPOSITIONS
@@ -279,7 +278,7 @@ export class CsvParser {
 
   public static parseCsvToCallData(csvContent: string, userId: string): CsvCallData[] {
     const lines = csvContent.split('\n').filter(line => line.trim());
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    // Skip header row
     const callData: CsvCallData[] = [];
 
     for (let i = 1; i < lines.length; i++) {
