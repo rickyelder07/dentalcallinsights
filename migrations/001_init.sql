@@ -7,7 +7,7 @@
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgvector";
+CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- ============================================
 -- CALLS TABLE
@@ -16,12 +16,12 @@ CREATE EXTENSION IF NOT EXISTS "pgvector";
 CREATE TABLE IF NOT EXISTS calls (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
-    audio_path TEXT NOT NULL,
+    audio_path TEXT NOT NULL DEFAULT '', -- Allow empty for calls without recordings
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
     
-    CONSTRAINT calls_audio_path_not_empty CHECK (audio_path <> '')
+    -- Note: No constraint on audio_path to allow calls without recordings
 );
 
 -- Create index on user_id for efficient user-specific queries

@@ -1,467 +1,420 @@
+'use client'
+
 /**
  * Upload Page
- * Comprehensive interface for uploading MP3 files and CSV call data
- * Supports drag-and-drop, progress tracking, and call matching
+ * Simplified CSV + Audio upload with direct filename matching
  */
 
-'use client';
-
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import AudioUploader from '@/app/components/audio-uploader';
-import CsvUploader from '@/app/components/csv-uploader';
-import MetadataForm from '@/app/components/metadata-form';
-import UploadProgressComponent from '@/app/components/upload-progress';
-import CallMatcher from '@/app/components/call-matcher';
-import type { CallMetadata, UploadProgress } from '@/types/upload';
-import type { CsvValidationResult, CallMatch } from '@/types/csv';
-
-type UploadStep = 'select-audio' | 'add-metadata' | 'upload-csv' | 'match-calls' | 'uploading' | 'complete';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import type { UploadResult, CsvValidationError } from '@/types/upload'
 
 export default function UploadPage() {
-  const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<UploadStep>('select-audio');
-  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
-  const [metadata, setMetadata] = useState<CallMetadata>({});
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
-  const [potentialMatches, setPotentialMatches] = useState<CallMatch[]>([]);
-  const [csvUploaded, setCsvUploaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploadedCallId, setUploadedCallId] = useState<string | null>(null);
+  const router = useRouter()
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [audioFiles, setAudioFiles] = useState<File[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState('')
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // Handle audio file selection
-  const handleAudioFileSelect = (file: File) => {
-    setSelectedAudioFile(file);
-    setError(null);
-  };
+  const handleCsvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        setError('Please select a CSV file')
+        return
+      }
+      setCsvFile(file)
+      setError(null)
+      setUploadResult(null)
+    }
+  }
 
-  // Handle metadata form submission
-  const handleMetadataSubmit = async (formMetadata: CallMetadata) => {
-    setMetadata(formMetadata);
-    setCurrentStep('uploading');
-    setError(null);
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      setAudioFiles(files)
+      setError(null)
+      setUploadResult(null)
+    }
+  }
+
+  const handleRemoveCsv = () => {
+    setCsvFile(null)
+    setError(null)
+    setUploadResult(null)
+  }
+
+  const handleRemoveAudio = (index: number) => {
+    setAudioFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setUploadResult(null)
+    setUploadProgress(0)
+    setUploadStatus('')
+
+    // Validate inputs
+    if (!csvFile) {
+      setError('Please select a CSV file')
+      return
+    }
+
+    if (audioFiles.length === 0) {
+      setError('Please select at least one audio file')
+      return
+    }
+
+    setIsUploading(true)
 
     try {
-      // Combine date and time into ISO string if both provided
-      let callDateTime = null;
-      if (formMetadata.call_date && formMetadata.call_time) {
-        callDateTime = `${formMetadata.call_date}T${formMetadata.call_time}:00`;
-      } else if (formMetadata.call_date) {
-        callDateTime = `${formMetadata.call_date}T12:00:00`;
-      }
+      // Simulate progress stages
+      setUploadStatus('Preparing files...')
+      setUploadProgress(10)
 
-      const enrichedMetadata = {
-        ...formMetadata,
-        call_datetime: callDateTime,
-      };
+      // Create form data
+      const formData = new FormData()
+      formData.append('csv', csvFile)
+      audioFiles.forEach((file) => {
+        formData.append('audio', file)
+      })
 
-      // Create FormData for upload
-      const formData = new FormData();
-      formData.append('file', selectedAudioFile!);
-      formData.append('metadata', JSON.stringify(enrichedMetadata));
+      setUploadStatus('Validating CSV...')
+      setUploadProgress(20)
 
-      // Upload file
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      // Upload files with progress tracking
+      const xhr = new XMLHttpRequest()
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload failed');
-      }
-
-      setUploadedCallId(result.callId);
-
-      // Try to find matches if we have date/time and CSV data is already uploaded
-      if (csvUploaded && callDateTime) {
-        await findMatchesForCall(result.callId, callDateTime, formMetadata.duration);
-      } else {
-        setCurrentStep('complete');
-      }
-    } catch (err) {
-      console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'Upload failed');
-      setCurrentStep('add-metadata');
-    }
-  };
-
-  // Handle CSV upload
-  const handleCsvParsed = async (csvContent: string, validation: CsvValidationResult) => {
-    if (validation.valid) {
-      try {
-        // Create a File object from CSV content
-        const csvBlob = new Blob([csvContent], { type: 'text/csv' });
-        const csvFile = new File([csvBlob], 'call_data.csv', { type: 'text/csv' });
-
-        const formData = new FormData();
-        formData.append('file', csvFile);
-
-        const response = await fetch('/api/csv-upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'CSV upload failed');
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round(((e.loaded / e.total) * 60) + 20)
+          setUploadProgress(percentComplete)
+          setUploadStatus(`Uploading files... ${percentComplete}%`)
         }
+      })
 
-        setCsvUploaded(true);
-        
-        // If we have an uploaded call with date/time, try to find matches
-        if (uploadedCallId && (metadata.call_date || metadata.call_time)) {
-          const callDateTime = metadata.call_date && metadata.call_time
-            ? `${metadata.call_date}T${metadata.call_time}:00`
-            : metadata.call_date
-            ? `${metadata.call_date}T12:00:00`
-            : null;
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200 || xhr.status === 207) {
+          setUploadProgress(90)
+          setUploadStatus('Processing...')
+
+          const result: UploadResult = JSON.parse(xhr.responseText)
           
-          if (callDateTime) {
-            await findMatchesForCall(uploadedCallId, callDateTime, metadata.duration);
+          setUploadProgress(100)
+          setUploadStatus('Upload complete!')
+          setUploadResult(result)
+
+          // If fully successful, redirect to library after a short delay
+          if (result.success && result.callsCreated && result.callsCreated.length > 0) {
+            setTimeout(() => {
+              router.push('/library')
+            }, 2000)
           }
+        } else {
+          const result = JSON.parse(xhr.responseText)
+          setError(result.message || 'Upload failed')
+          if (result.errors && result.errors.length > 0) {
+            setUploadResult(result)
+          }
+          setUploadProgress(0)
+          setUploadStatus('')
         }
-      } catch (err) {
-        console.error('CSV upload error:', err);
-        setError(err instanceof Error ? err.message : 'CSV upload failed');
-      }
-    }
-  };
+        setIsUploading(false)
+      })
 
-  // Find matches for uploaded call based on date/time and duration
-  const findMatchesForCall = async (callId: string, callDateTime: string, duration?: number) => {
-    try {
-      const response = await fetch('/api/match-calls', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          callId,
-          callTime: callDateTime,
-          phoneNumber: metadata.phone_number,
-          duration: duration || undefined,
-          options: {
-            time_tolerance_minutes: 5,
-            phone_number_match: true,
-            duration_tolerance_seconds: 5, // Tighter tolerance - within 5 seconds
-            require_disposition_match: false,
-          },
-        }),
-      });
+      xhr.addEventListener('error', () => {
+        setError('Network error occurred during upload')
+        setUploadProgress(0)
+        setUploadStatus('')
+        setIsUploading(false)
+      })
 
-      const result = await response.json();
-
-      if (response.ok && result.matches && result.matches.length > 0) {
-        setPotentialMatches(result.matches);
-        setCurrentStep('match-calls');
-      } else {
-        // No matches found, proceed to complete
-        setCurrentStep('complete');
-      }
+      xhr.open('POST', '/api/upload')
+      xhr.send(formData)
     } catch (err) {
-      console.error('Match finding error:', err);
-      // Don't show error - matching is optional, proceed to complete
-      setCurrentStep('complete');
+      setError(
+        err instanceof Error ? err.message : 'An unexpected error occurred'
+      )
+      setUploadProgress(0)
+      setUploadStatus('')
+      setIsUploading(false)
     }
-  };
+  }
 
-  // Handle match selection
-  const handleMatchSelect = async (match: CallMatch) => {
-    if (!uploadedCallId) return;
-
-    try {
-      const response = await fetch('/api/match-calls', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          callId: uploadedCallId,
-          csvCallId: match.csv_id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to link call with CSV data');
-      }
-
-      setCurrentStep('complete');
-    } catch (err) {
-      console.error('Match linking error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to link call');
-    }
-  };
-
-  // Handle skip matching
-  const handleSkipMatching = () => {
-    setCurrentStep('complete');
-  };
-
-  // Reset and start over
-  const handleReset = () => {
-    setCurrentStep('select-audio');
-    setSelectedAudioFile(null);
-    setMetadata({});
-    setUploadProgress(null);
-    setPotentialMatches([]);
-    setCsvUploaded(false);
-    setError(null);
-    setUploadedCallId(null);
-  };
-
-  // Navigate to next step
-  const handleNext = () => {
-    if (currentStep === 'select-audio' && selectedAudioFile) {
-      setCurrentStep('add-metadata');
-    }
-  };
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Upload Call Recording
-        </h1>
-        <p className="text-gray-600">
-          Upload audio files and CSV call data for transcription and analysis
-        </p>
+    <div className="max-w-4xl mx-auto px-4 py-12">
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        Upload Call Recordings
+      </h1>
+      <p className="text-gray-600 mb-8">
+        Upload a CSV file with call data and matching audio files (MP3, WAV, M4A, AAC)
+      </p>
+
+      {/* Instructions */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+        <h3 className="font-semibold text-blue-900 mb-2">Instructions:</h3>
+        <ol className="list-decimal list-inside space-y-1 text-blue-800 text-sm">
+          <li>
+            Upload a CSV file that includes a &quot;Call&quot; column with audio filenames
+          </li>
+          <li>
+            Upload audio files (MP3, WAV, M4A, or AAC) that match the filenames in your CSV
+          </li>
+          <li>
+            All audio filenames must exactly match entries in the CSV &quot;Call&quot; column
+          </li>
+        </ol>
       </div>
 
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          {['Audio', 'Metadata', 'Upload', 'Complete'].map((label, index) => {
-            const stepOrder = ['select-audio', 'add-metadata', 'uploading', 'complete'];
-            const currentIndex = stepOrder.indexOf(currentStep);
-            const isActive = index <= currentIndex;
-            const isCurrent = index === currentIndex;
-
-            return (
-              <div key={label} className="flex items-center flex-1">
-                <div className="flex items-center">
-                  <div
-                    className={`
-                      w-10 h-10 rounded-full flex items-center justify-center font-medium
-                      ${isCurrent ? 'bg-blue-600 text-white' : isActive ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'}
-                    `}
-                  >
-                    {isActive && !isCurrent ? (
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    ) : (
-                      index + 1
-                    )}
-                  </div>
-                  <span
-                    className={`ml-2 text-sm font-medium ${isCurrent ? 'text-blue-600' : isActive ? 'text-green-600' : 'text-gray-500'}`}
-                  >
-                    {label}
-                  </span>
-                </div>
-                {index < 3 && (
-                  <div
-                    className={`flex-1 h-1 mx-4 ${isActive ? 'bg-green-500' : 'bg-gray-200'}`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-start">
-            <svg
-              className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-800">Upload Error</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Main Upload Flow */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Step 1: Select Audio File */}
-          {currentStep === 'select-audio' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Step 1: Select Audio File
-              </h2>
-              <AudioUploader onFileSelect={handleAudioFileSelect} />
-              {selectedAudioFile && (
-                <button
-                  onClick={handleNext}
-                  className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Continue to Metadata
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Step 2: Add Metadata */}
-          {currentStep === 'add-metadata' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Step 2: Add Call Information
-              </h2>
-              <MetadataForm
-                onSubmit={handleMetadataSubmit}
-                initialData={metadata}
-                isLoading={false}
-              />
-            </div>
-          )}
-
-          {/* Step 3: Uploading */}
-          {currentStep === 'uploading' && uploadProgress && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Step 3: Uploading...
-              </h2>
-              <UploadProgressComponent progress={uploadProgress} />
-            </div>
-          )}
-
-          {/* Step 4: Match Calls */}
-          {currentStep === 'match-calls' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Match with CSV Data
-              </h2>
-              <CallMatcher
-                matches={potentialMatches}
-                onSelectMatch={handleMatchSelect}
-                onSkip={handleSkipMatching}
-              />
-            </div>
-          )}
-
-          {/* Step 5: Complete */}
-          {currentStep === 'complete' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-              <svg
-                className="w-16 h-16 text-green-500 mx-auto mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* CSV Upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            1. Upload CSV File *
+          </label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
+            {!csvFile ? (
+              <div className="text-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCsvChange}
+                  className="hidden"
+                  id="csv-upload"
                 />
-              </svg>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Upload Complete!
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Your call recording has been successfully uploaded and is ready for processing.
-              </p>
-              
-              {/* Manual matching option */}
-              {csvUploaded && uploadedCallId && (metadata.call_date || metadata.call_time) && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
-                  <p className="text-sm text-blue-800 mb-3">
-                    CSV data is available. Would you like to match this recording with your CSV call data?
-                  </p>
-                  <button
-                    onClick={() => {
-                      const callDateTime = metadata.call_date && metadata.call_time
-                        ? `${metadata.call_date}T${metadata.call_time}:00`
-                        : metadata.call_date
-                        ? `${metadata.call_date}T12:00:00`
-                        : null;
-                      if (callDateTime) {
-                        findMatchesForCall(uploadedCallId, callDateTime, metadata.duration);
-                      }
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Find Matching CSV Records
-                  </button>
-                </div>
-              )}
-
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={() => router.push('/library')}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                <label
+                  htmlFor="csv-upload"
+                  className="cursor-pointer inline-block"
                 >
-                  View Library
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                >
-                  Upload Another
-                </button>
+                  <div className="text-gray-600 mb-2">
+                    📄 Click to select CSV file
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Must include &quot;Call&quot; column with audio filenames
+                  </div>
+                </label>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - CSV Upload */}
-        <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 sticky top-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              CSV Call Data
-            </h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Upload CSV files containing call metadata for automatic matching with audio recordings.
-            </p>
-            <CsvUploader onCsvParsed={handleCsvParsed} />
-            {csvUploaded && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded flex items-start">
-                <svg
-                  className="w-5 h-5 text-green-600 mr-2 flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-green-800">
-                    CSV data uploaded successfully
-                  </p>
-                  <p className="text-xs text-green-700 mt-1">
-                    Matching enabled for future uploads
-                  </p>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">📄</div>
+                  <div>
+                    <div className="font-medium text-gray-900">{csvFile.name}</div>
+                    <div className="text-sm text-gray-500">
+                      {formatFileSize(csvFile.size)}
+                    </div>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCsv}
+                  className="text-red-600 hover:text-red-700 font-medium"
+                >
+                  Remove
+                </button>
               </div>
             )}
           </div>
         </div>
-      </div>
+
+        {/* Audio Upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            2. Upload Audio Files *
+          </label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
+            <div className="text-center mb-4">
+              <input
+                type="file"
+                accept=".mp3,.wav,.m4a,.aac,audio/*"
+                multiple
+                onChange={handleAudioChange}
+                className="hidden"
+                id="audio-upload"
+              />
+              <label
+                htmlFor="audio-upload"
+                className="cursor-pointer inline-block"
+              >
+                <div className="text-gray-600 mb-2">
+                  🎵 Click to select audio files (or select multiple)
+                </div>
+                <div className="text-sm text-gray-500">
+                  Supported formats: MP3, WAV, M4A, AAC (max 100MB each)
+                </div>
+              </label>
+            </div>
+
+            {audioFiles.length > 0 && (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {audioFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-gray-50 p-3 rounded"
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="text-xl">🎵</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          {file.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {formatFileSize(file.size)}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAudio(index)}
+                      className="text-red-600 hover:text-red-700 font-medium ml-4"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="font-semibold text-red-900 mb-1">Error</div>
+            <div className="text-red-800">{error}</div>
+          </div>
+        )}
+
+        {/* Upload Result */}
+        {uploadResult && (
+          <div
+            className={`border rounded-lg p-4 ${
+              uploadResult.success
+                ? 'bg-green-50 border-green-200'
+                : 'bg-yellow-50 border-yellow-200'
+            }`}
+          >
+            <div
+              className={`font-semibold mb-2 ${
+                uploadResult.success ? 'text-green-900' : 'text-yellow-900'
+              }`}
+            >
+              {uploadResult.success ? '✓ Upload Successful' : '⚠ Partial Upload'}
+            </div>
+            <div
+              className={
+                uploadResult.success ? 'text-green-800' : 'text-yellow-800'
+              }
+            >
+              <p>{uploadResult.message}</p>
+              <div className="mt-2 text-sm">
+                <p>CSV rows processed: {uploadResult.csvRowsProcessed || 0}</p>
+                <p>Audio files uploaded: {uploadResult.audioFilesUploaded || 0}</p>
+                <p>Calls created: {uploadResult.callsCreated?.length || 0}</p>
+              </div>
+
+              {uploadResult.errors && uploadResult.errors.length > 0 && (
+                <div className="mt-3">
+                  <p className="font-semibold mb-1">Errors:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {uploadResult.errors.map((err, idx) => (
+                      <li key={idx}>
+                        {err.column && `[${err.column}] `}
+                        {err.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {uploadResult.success && (
+                <p className="mt-3 text-sm font-medium">
+                  Redirecting to library...
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={!csvFile || audioFiles.length === 0 || isUploading}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              !csvFile || audioFiles.length === 0 || isUploading
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {isUploading ? 'Uploading...' : 'Upload Files'}
+          </button>
+        </div>
+
+        {/* Upload Progress Bar */}
+        {isUploading && (
+          <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">
+                  {uploadStatus}
+                </span>
+                <span className="text-sm font-semibold text-blue-600">
+                  {uploadProgress}%
+                </span>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                >
+                  <div className="w-full h-full bg-gradient-to-r from-blue-500 to-blue-600 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Upload Details */}
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <svg
+                  className="animate-spin h-4 w-4 text-blue-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span>Processing {audioFiles.length} file{audioFiles.length !== 1 ? 's' : ''}...</span>
+              </div>
+              <span className="text-gray-500">Please wait</span>
+            </div>
+          </div>
+        )}
+      </form>
     </div>
-  );
+  )
 }

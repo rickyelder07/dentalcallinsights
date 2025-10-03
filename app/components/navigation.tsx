@@ -24,7 +24,7 @@ export default function Navigation() {
               href="/"
               className="text-xl font-bold text-primary-600 hover:text-primary-700 transition"
             >
-              DentalCallInsights
+              Dental Call Insights
             </Link>
           </div>
 

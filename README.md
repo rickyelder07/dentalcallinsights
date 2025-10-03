@@ -21,14 +21,14 @@ Transform dental call recordings into actionable insights with AI-powered transc
 - ✅ Password reset flow
 - ✅ Session persistence and auto-refresh
 
-### 🚧 In Progress (Milestone 3)
-- ⏳ Audio file upload and storage
-- ⏳ File upload component with drag-and-drop
-- ⏳ Supabase Storage integration
-- ⏳ Upload progress and validation
-- ⏳ Metadata form (patient ID, call type, etc.)
-- ⏳ CSV call data upload and matching
-- ⏳ Call recording to CSV data correlation
+### ✅ Completed (Milestone 3)
+- ✅ Audio file upload and storage
+- ✅ CSV upload with direct filename matching
+- ✅ Supabase Storage integration with RLS
+- ✅ Upload validation and error handling
+- ✅ Simplified workflow (no complex matching needed)
+- ✅ User-isolated storage paths
+- ✅ Support for MP3, WAV, M4A, AAC files
 
 ### 📅 Planned (Future Milestones)
 - ⏳ Automatic transcription of call recordings

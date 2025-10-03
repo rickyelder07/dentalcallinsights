@@ -13,7 +13,7 @@ import Navigation from './components/navigation'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'DentalCallInsights',
+  title: 'Dental Call Insights',
   description: 'Transform dental call recordings into actionable insights',
 }
 
@@ -38,7 +38,7 @@ export default function RootLayout({
               <footer className="bg-gray-50 border-t mt-auto">
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                   <p className="text-center text-gray-500 text-sm">
-                    © 2025 DentalCallInsights. Built with Next.js and Supabase.
+                    © 2025 Dental Call Insights. Built with Next.js and Supabase.
                   </p>
                 </div>
               </footer>
