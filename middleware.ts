@@ -10,7 +10,7 @@ import type { NextRequest } from 'next/server'
 /**
  * Protected routes that require authentication
  */
-const PROTECTED_ROUTES = ['/upload', '/library', '/qa', '/profile']
+const PROTECTED_ROUTES = ['/upload', '/library', '/qa', '/profile', '/calls']
 
 /**
  * Public routes that redirect to /library if user is authenticated
