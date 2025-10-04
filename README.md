@@ -33,12 +33,35 @@ Transform dental call recordings into actionable insights with AI-powered transc
 - ✅ Real-time upload progress tracking
 - ✅ Duplicate prevention with upsert logic
 
+### ✅ Completed (Milestone 4)
+- ✅ OpenAI Whisper integration for transcription
+- ✅ Background job processing for transcriptions
+- ✅ Individual call detail pages with audio player
+- ✅ Transcript viewer and editor
+- ✅ Synchronized audio playback with transcript
+- ✅ Enhanced call library with transcript status
+- ✅ Bulk transcription with checkbox selection
+- ✅ Auto-detection of English and Spanish calls
+- ✅ Language display in call library and detail pages
+
+### ✅ Completed (Milestone 5)
+- ✅ GPT-4o integration for AI insights
+- ✅ Call summaries with key points and outcomes
+- ✅ Sentiment analysis (overall, patient satisfaction, staff performance)
+- ✅ Action items with priority and assignee tracking
+- ✅ Red flags and concerns detection
+- ✅ Smart caching to reduce API costs
+- ✅ Call length validation (6+ seconds)
+- ✅ Insights tab in call detail page
+- ✅ Export insights as Text or JSON
+- ✅ Manual regeneration capability
+
 ### 📅 Planned (Future Milestones)
-- ⏳ Automatic transcription of call recordings
-- ⏳ AI-generated summaries and sentiment analysis
 - ⏳ Vector embeddings for semantic search
-- ⏳ Searchable call library with filters
+- ⏳ Advanced call library filters
 - ⏳ QA dashboard and analytics
+- ⏳ Batch insights processing
+- ⏳ Custom insight templates
 
 ## 🏗️ Project Structure
 

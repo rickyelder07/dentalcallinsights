@@ -2,7 +2,7 @@
 
 /**
  * Call Detail Page
- * Display individual call with audio player, transcript, and editing capabilities
+ * Display individual call with audio player, transcript, editing capabilities, and AI insights
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -13,6 +13,7 @@ import AudioPlayer from '@/app/components/AudioPlayer'
 import TranscriptViewer from '@/app/components/TranscriptViewer'
 import TranscriptEditor from '@/app/components/TranscriptEditor'
 import TranscriptionStatus from '@/app/components/TranscriptionStatus'
+import InsightsPanel from '@/app/components/InsightsPanel'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 
@@ -27,6 +28,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'transcript' | 'insights'>('transcript')
 
   // Fetch call and transcript data
   useEffect(() => {
@@ -324,7 +326,35 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      {/* Transcription Section */}
+      {/* Tabs */}
+      {transcript && transcript.transcription_status === 'completed' && (
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('transcript')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'transcript'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📝 Transcript
+            </button>
+            <button
+              onClick={() => setActiveTab('insights')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'insights'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🤖 AI Insights
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {/* Content Section */}
       <div className="space-y-6">
         {/* No transcript yet */}
         {!transcript && !isTranscribing && (
@@ -369,8 +399,8 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
           />
         )}
 
-        {/* Transcript completed */}
-        {transcript && transcript.transcription_status === 'completed' && (
+        {/* Transcript Tab */}
+        {transcript && transcript.transcription_status === 'completed' && activeTab === 'transcript' && (
           <>
             {/* Toggle between view and edit */}
             <div className="flex items-center justify-between mb-4">
@@ -399,6 +429,14 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
               />
             )}
           </>
+        )}
+
+        {/* Insights Tab */}
+        {transcript && transcript.transcription_status === 'completed' && activeTab === 'insights' && (
+          <InsightsPanel 
+            callId={params.id} 
+            callDuration={call?.call_duration_seconds}
+          />
         )}
 
         {/* Failed transcription */}

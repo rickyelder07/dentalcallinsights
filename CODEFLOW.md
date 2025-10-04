@@ -1,9 +1,9 @@
 # DentalCallInsights - Development Flow & Architecture
 
-## Current Status: 🚧 Milestone 3 In Progress (Audio Upload & Storage)
+## Current Status: ✅ Milestone 5 Complete (AI Insights)
 
-**Branch:** `milestone/03-audio-upload-and-storage`  
-**Last Updated:** December 2024
+**Branch:** `milestone/05-ai-insights`  
+**Last Updated:** October 2025
 
 ### Milestone 1 Complete ✅
 - Next.js 14 + TypeScript scaffold with App Router
@@ -25,13 +25,31 @@
 - Type-safe auth utilities and validation
 - Comprehensive error handling
 
-### Milestone 3 In Progress 🚧
-- Audio file upload interface development
-- Supabase Storage bucket configuration
-- File upload component with drag-and-drop
-- Upload progress indicators and validation
-- Metadata form for call information
-- Storage RLS policies for user isolation
+### Milestone 3 Complete ✅
+- Audio file upload and storage
+- CSV upload with filename matching
+- Supabase Storage integration with RLS
+- Support for calls without recordings
+- Real-time upload progress tracking
+- Duplicate prevention with upsert logic
+
+### Milestone 4 Complete ✅
+- OpenAI Whisper integration for transcription
+- Background job processing
+- Call detail pages with audio player
+- Transcript viewer and editor
+- Bulk transcription capability
+- Auto-detection of English and Spanish
+
+### Milestone 5 Complete ✅
+- GPT-4o integration for AI insights
+- Call summaries and key points
+- Sentiment analysis system
+- Action items tracking
+- Red flags detection
+- Smart caching (30-day TTL)
+- Call length validation (6+ seconds)
+- Export functionality (Text/JSON)
 
 ## Architecture Overview
 
