@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS insights (
     -- Structure: [{"concern": string, "severity": string, "category": string}]
     
     -- Metadata
-    model_used TEXT DEFAULT 'gpt-4o',
+    model_used TEXT DEFAULT 'gpt-4o-mini',
     transcript_hash TEXT, -- For cache invalidation when transcript changes
     generated_at TIMESTAMPTZ DEFAULT NOW(),
     

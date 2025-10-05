@@ -32,12 +32,12 @@ export default function InsightsPanel({
   const [error, setError] = useState<string | null>(null)
   const [cached, setCached] = useState(false)
   
-  // Fetch or generate insights on mount
+  // Fetch insights from database first, generate only if not exist
   useEffect(() => {
-    generateInsights()
+    fetchOrGenerateInsights()
   }, [callId])
   
-  const generateInsights = async () => {
+  const fetchOrGenerateInsights = async () => {
     try {
       setIsLoading(true)
       setError(null)
@@ -51,6 +51,37 @@ export default function InsightsPanel({
         return
       }
       
+      // First, check if insights already exist in database
+      const { data: existingInsights, error: fetchError } = await supabase
+        .from('insights')
+        .select('*')
+        .eq('call_id', callId)
+        .single()
+      
+      // If insights exist, use them (no API call)
+      if (existingInsights && !fetchError) {
+        const cachedInsights = {
+          summary: {
+            brief: existingInsights.summary_brief,
+            key_points: existingInsights.summary_key_points,
+            outcome: existingInsights.call_outcome,
+          },
+          sentiment: {
+            overall: existingInsights.overall_sentiment,
+            patient_satisfaction: existingInsights.patient_satisfaction,
+            staff_performance: existingInsights.staff_performance,
+          },
+          action_items: existingInsights.action_items,
+          red_flags: existingInsights.red_flags,
+        }
+        setInsights(cachedInsights)
+        setCached(true)
+        onInsightsGenerated?.(cachedInsights)
+        setIsLoading(false)
+        return
+      }
+      
+      // If no insights exist, generate them (only happens once)
       const response = await fetch('/api/insights/generate', {
         method: 'POST',
         headers: {
@@ -69,14 +100,14 @@ export default function InsightsPanel({
       
       if (data.success && data.insights) {
         setInsights(data.insights)
-        setCached(data.cached || false)
+        setCached(false) // This is a fresh generation
         onInsightsGenerated?.(data.insights)
       } else {
         setError('No insights generated')
       }
     } catch (err) {
-      console.error('Error generating insights:', err)
-      setError(err instanceof Error ? err.message : 'Failed to generate insights')
+      console.error('Error fetching/generating insights:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load insights')
     } finally {
       setIsLoading(false)
     }
@@ -96,6 +127,7 @@ export default function InsightsPanel({
         return
       }
       
+      // Force regeneration (updates existing record in database)
       const response = await fetch('/api/insights/regenerate', {
         method: 'POST',
         headers: {
@@ -114,7 +146,7 @@ export default function InsightsPanel({
       
       if (data.success && data.insights) {
         setInsights(data.insights)
-        setCached(false)
+        setCached(false) // Mark as fresh (not cached)
         onInsightsGenerated?.(data.insights)
       } else {
         setError('No insights generated')
@@ -237,7 +269,12 @@ export default function InsightsPanel({
           <h2 className="text-2xl font-bold text-gray-900">AI Insights</h2>
           {cached && (
             <p className="text-sm text-gray-600 mt-1">
-              ⚡ Cached (generated previously)
+              💾 Loaded from database (generated previously)
+            </p>
+          )}
+          {!cached && insights && (
+            <p className="text-sm text-green-600 mt-1">
+              ✨ Freshly generated and saved
             </p>
           )}
         </div>

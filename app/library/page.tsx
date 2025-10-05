@@ -26,6 +26,8 @@ export default function LibraryPage() {
   const [selectedCalls, setSelectedCalls] = useState<Set<string>>(new Set())
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [transcriptionProgress, setTranscriptionProgress] = useState<Record<string, string>>({})
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false)
+  const [insightsProgress, setInsightsProgress] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchCalls()
@@ -189,6 +191,11 @@ export default function LibraryPage() {
            call.transcript.transcription_status === 'pending'
   }
 
+  // Check if call can have insights generated
+  const canGenerateInsights = (call: CallWithTranscript) => {
+    return call.transcript && call.transcript.transcription_status === 'completed'
+  }
+
   // Bulk transcribe selected calls
   const handleBulkTranscribe = async () => {
     const callsToTranscribe = filteredCalls.filter((c) => 
@@ -255,6 +262,88 @@ export default function LibraryPage() {
       setError('Failed to start bulk transcription')
     } finally {
       setIsTranscribing(false)
+    }
+  }
+
+  // Bulk generate AI insights for selected calls
+  const handleBulkGenerateInsights = async () => {
+    const callsForInsights = filteredCalls.filter((c) => 
+      selectedCalls.has(c.id) && canGenerateInsights(c)
+    )
+
+    if (callsForInsights.length === 0) {
+      alert('Please select calls with completed transcriptions')
+      return
+    }
+
+    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?\n\nThis will use OpenAI API credits (~$0.02 per call).`)) {
+      return
+    }
+
+    setIsGeneratingInsights(true)
+    const progress: Record<string, string> = {}
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      let successCount = 0
+      let errorCount = 0
+
+      for (const call of callsForInsights) {
+        try {
+          progress[call.id] = 'generating...'
+          setInsightsProgress({ ...progress })
+
+          const response = await fetch('/api/insights/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              callId: call.id,
+              forceRegenerate: false, // Use cached if available
+            }),
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            if (data.cached) {
+              progress[call.id] = '✓ loaded from cache'
+            } else {
+              progress[call.id] = '✓ generated'
+            }
+            successCount++
+          } else {
+            const errorData = await response.json()
+            progress[call.id] = `✗ ${errorData.error || 'Failed'}`
+            errorCount++
+          }
+          setInsightsProgress({ ...progress })
+        } catch (error) {
+          progress[call.id] = '✗ error'
+          errorCount++
+          setInsightsProgress({ ...progress })
+        }
+      }
+
+      // Show summary
+      alert(`AI Insights Generation Complete!\n\n✓ Success: ${successCount}\n✗ Errors: ${errorCount}`)
+
+      // Clear selection and refresh
+      setSelectedCalls(new Set())
+      setTimeout(() => {
+        setInsightsProgress({})
+      }, 3000)
+    } catch (error) {
+      console.error('Bulk insights generation error:', error)
+      setError('Failed to generate insights')
+    } finally {
+      setIsGeneratingInsights(false)
     }
   }
 
@@ -388,6 +477,17 @@ export default function LibraryPage() {
             >
               {isTranscribing ? 'Starting...' : 'Transcribe Selected'}
             </button>
+            <button
+              onClick={handleBulkGenerateInsights}
+              disabled={isGeneratingInsights}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                isGeneratingInsights
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
+            >
+              {isGeneratingInsights ? 'Generating...' : '🤖 AI Insights'}
+            </button>
           </div>
         )}
       </div>
@@ -504,8 +604,13 @@ export default function LibraryPage() {
                           {call.filename}
                         </button>
                         {transcriptionProgress[call.id] && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            ({transcriptionProgress[call.id]})
+                          <span className="ml-2 text-xs text-blue-500">
+                            (Transcription: {transcriptionProgress[call.id]})
+                          </span>
+                        )}
+                        {insightsProgress[call.id] && (
+                          <span className="ml-2 text-xs text-purple-500">
+                            (Insights: {insightsProgress[call.id]})
                           </span>
                         )}
                       </div>

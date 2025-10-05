@@ -105,7 +105,12 @@ export async function POST(req: NextRequest) {
     // Generate hash for caching
     const currentHash = generateTranscriptHash(transcriptText)
     
-    // Check for existing insights (cache)
+    // Check for existing insights (permanent storage)
+    // Insights are generated ONCE and stored permanently in database
+    // They are only regenerated if:
+    // 1. forceRegenerate is true (user clicked "Regenerate")
+    // 2. Transcript has changed (transcript_hash differs)
+    // 3. Cache has expired (>30 days old)
     if (!forceRegenerate) {
       const { data: existingInsights } = await supabase
         .from('insights')
@@ -122,7 +127,7 @@ export async function POST(req: NextRequest) {
         )
         
         if (cacheValid) {
-          // Return cached insights
+          // Return existing insights from database (no OpenAI API call)
           return NextResponse.json({
             success: true,
             cached: true,
@@ -142,10 +147,14 @@ export async function POST(req: NextRequest) {
             },
           })
         }
+        
+        // If we reach here, cache is invalid (transcript changed or expired)
+        // Will regenerate below
       }
     }
     
-    // Generate insights with GPT-4o
+    // Generate insights with GPT-4o-mini (only called if no valid cached insights exist)
+    // This ensures we only make an OpenAI API call once per transcript
     const result = await generateInsightsWithRetry(
       transcriptText,
       call.call_duration_seconds
@@ -165,7 +174,9 @@ export async function POST(req: NextRequest) {
       )
     }
     
-    // Save insights to database (upsert)
+    // Save insights to database permanently (upsert)
+    // Uses UPSERT to handle both initial creation and regeneration
+    // The unique constraint on call_id ensures one insight record per call
     const { error: upsertError } = await supabase
       .from('insights')
       .upsert(
@@ -180,12 +191,12 @@ export async function POST(req: NextRequest) {
           staff_performance: result.insights.sentiment.staff_performance,
           action_items: result.insights.action_items,
           red_flags: result.insights.red_flags,
-          model_used: 'gpt-4o',
+          model_used: 'gpt-4o-mini',
           transcript_hash: currentHash,
           generated_at: new Date().toISOString(),
         },
         {
-          onConflict: 'call_id',
+          onConflict: 'call_id', // Update if exists, insert if not
         }
       )
     

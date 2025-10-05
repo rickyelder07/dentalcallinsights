@@ -20,7 +20,7 @@ import type { CallInsights, GPTInsightsResponse } from '@/types/insights'
 // ============================================
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-const GPT_MODEL = 'gpt-4o'
+const GPT_MODEL = 'gpt-4o-mini'
 const MAX_TOKENS = 800
 const TEMPERATURE = 0.3
 const MIN_CALL_DURATION_SECONDS = 6
