@@ -1,0 +1,423 @@
+You are an expert full-stack engineer and will act as my Cursor copilot. Project: "DentalCallInsights" — a Next.js + Supabase web app for turning call MP3s + call metadata into searchable transcripts, summaries, sentiment, embeddings, and basic analytics. I need you to implement Milestone 4: Transcription Pipeline with OpenAI Whisper integration and comprehensive transcript management.
+
+🎯 Project Context
+Current Status: ✅ Milestones 1-3 Complete (Authentication, User Management, Audio Upload & Storage)
+Target: 🚧 Milestone 4 - Transcription Pipeline
+Branch: milestone/04-transcription-pipeline
+Problem: Dental office managers have uploaded call recordings and CSV data, but now need to transcribe these audio files into searchable text for analysis, insights, and compliance tracking.
+Core User Action: Upload audio files → Automatic transcription → View/edit transcripts → Ready for AI analysis pipeline.
+Aha Moment: Managers can now search through call transcripts, identify patterns, and extract actionable insights from their call data.
+
+📋 Requirements & Constraints
+Tech Stack: Next.js 14 (App Router), TypeScript, TailwindCSS, Supabase (Auth, Postgres, Storage, pgvector), OpenAI Whisper API, Vercel
+Code Style: TypeScript strict mode, ESLint, Prettier, functional React components with hooks
+Security: RLS policies for user data isolation, API key protection, input validation
+Performance: Handle large audio files efficiently, background processing, real-time updates
+Integration: Build on existing upload system, prepare for AI analysis pipeline
+
+🎯 Deliverables (create real files; show file path + file content)
+
+1. OpenAI Whisper Integration
+lib/openai.ts - OpenAI API client and Whisper integration
+app/api/transcribe/route.ts - Transcription API endpoint
+app/api/transcribe/status/route.ts - Transcription status tracking
+Background job processing for large files
+Error handling and retry logic
+
+2. Transcript Management System
+app/calls/[id]/page.tsx - Individual call detail page with transcript
+components/TranscriptViewer.tsx - Transcript display and editing
+components/AudioPlayer.tsx - Synchronized audio player
+components/TranscriptEditor.tsx - Inline transcript editing
+components/TranscriptionStatus.tsx - Processing status indicators
+
+3. Database Schema Updates
+migrations/005_transcription_schema.sql - Transcript table enhancements
+Add transcription status tracking
+Add confidence scores and metadata
+Add speaker diarization support (optional)
+Add timestamp alignment data
+
+4. Background Processing
+lib/transcription-queue.ts - Queue management for transcription jobs
+lib/transcription-worker.ts - Background processing worker
+app/api/transcribe/process/route.ts - Processing endpoint
+Status tracking and progress updates
+Error handling and recovery
+
+5. Audio Player Integration
+components/AudioPlayer.tsx - HTML5 audio player with controls
+components/TranscriptSync.tsx - Synchronized transcript highlighting
+components/PlaybackControls.tsx - Play/pause/skip controls
+components/TimeStampDisplay.tsx - Current playback time display
+
+6. Transcript Display Features
+components/TranscriptViewer.tsx - Full transcript display
+components/TranscriptSearch.tsx - In-text search functionality
+components/TranscriptExport.tsx - Export transcript options
+components/TranscriptShare.tsx - Share transcript links
+
+7. Enhanced Call Library
+app/library/page.tsx - Updated library with transcript status
+components/CallCard.tsx - Call cards with transcription status
+components/TranscriptPreview.tsx - Preview transcript snippets
+components/FilterControls.tsx - Filter by transcription status
+
+8. TypeScript Types
+types/transcription.ts - Transcription-related types
+types/audio.ts - Audio player types
+types/transcript.ts - Transcript data types
+Enhanced existing types for new features
+
+🔧 Technical Specifications
+
+Transcription Requirements
+OpenAI Whisper API integration with proper error handling
+Support for multiple audio formats (MP3, WAV, M4A, AAC)
+File size limits: Up to 25MB per file (Whisper limit)
+Processing time: Background jobs for large files
+Status tracking: Real-time processing status updates
+Quality control: Confidence scores and manual review options
+
+Audio Player Requirements
+HTML5 audio player with custom controls
+Synchronized transcript highlighting
+Playback speed control (0.5x to 2x)
+Keyboard shortcuts for accessibility
+Mobile-responsive design
+Progress tracking and resume functionality
+
+Transcript Management
+Real-time editing with auto-save
+Version control for transcript changes
+Search and highlight functionality
+Export options (TXT, PDF, SRT)
+Share functionality with secure links
+Collaborative editing (future enhancement)
+
+Security Requirements
+API key protection: Server-side only
+User isolation: RLS policies for transcript access
+Input validation: Audio file validation
+Rate limiting: Prevent API abuse
+Access control: Authenticated users only
+
+Performance Requirements
+Background processing: Non-blocking transcription
+Progress updates: Real-time status updates
+Caching: Transcript caching for performance
+Optimization: Efficient audio processing
+Scalability: Handle multiple concurrent transcriptions
+
+🗄️ Database Schema Updates
+
+Enhanced transcripts Table
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS transcription_status TEXT DEFAULT 'pending';
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS confidence_score NUMERIC(3,2);
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS processing_started_at TIMESTAMPTZ;
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS processing_completed_at TIMESTAMPTZ;
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS raw_transcript TEXT;
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS edited_transcript TEXT;
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS speaker_segments JSONB;
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS timestamps JSONB;
+
+Transcription Jobs Table
+CREATE TABLE IF NOT EXISTS transcription_jobs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    call_id UUID NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'
+);
+
+RLS Policies for Transcripts
+CREATE POLICY "Users can view own transcripts" ON transcripts
+FOR SELECT USING (call_id IN (
+    SELECT id FROM calls WHERE user_id = auth.uid()
+));
+
+CREATE POLICY "Users can update own transcripts" ON transcripts
+FOR UPDATE USING (call_id IN (
+    SELECT id FROM calls WHERE user_id = auth.uid()
+));
+
+🎨 UI/UX Requirements
+
+Call Detail Page
+Individual call view with audio player and transcript
+Synchronized playback with transcript highlighting
+Edit transcript functionality with auto-save
+Export and share options
+Speaker identification (if available)
+Timestamp alignment
+
+Audio Player Interface
+Custom HTML5 audio player with dental office branding
+Play/pause/skip controls with keyboard shortcuts
+Playback speed control (0.5x to 2x)
+Progress bar with click-to-seek functionality
+Volume control with mute toggle
+Fullscreen mode for mobile devices
+
+Transcript Display
+Clean, readable transcript formatting
+Search and highlight functionality
+Edit mode with inline editing
+Version history and change tracking
+Export options (TXT, PDF, SRT)
+Share functionality with secure links
+
+Library Integration
+Updated call library with transcription status
+Filter by transcription status (pending, processing, completed, failed)
+Search through transcript content
+Preview transcript snippets
+Bulk transcription options
+
+🔍 Transcription Features
+
+Automatic Processing
+Background transcription for uploaded audio files
+Real-time status updates during processing
+Error handling and retry logic for failed transcriptions
+Quality assessment with confidence scores
+Automatic speaker detection (if enabled)
+
+Manual Review
+Edit transcript functionality with auto-save
+Version control for transcript changes
+Quality indicators and confidence scores
+Manual speaker identification
+Timestamp adjustment and alignment
+
+Export and Sharing
+Multiple export formats (TXT, PDF, SRT, VTT)
+Secure sharing with expiration dates
+Bulk export functionality
+Custom formatting options
+Integration with existing call metadata
+
+📊 Success Metrics
+
+Functional Requirements
+✅ Audio files are automatically transcribed after upload
+✅ Transcripts are displayed with synchronized audio player
+✅ Users can edit transcripts with auto-save functionality
+✅ Search functionality works across all transcript content
+✅ Export options work for all supported formats
+✅ Background processing doesn't block user interface
+
+Performance Requirements
+✅ Transcription completes within 2x audio duration
+✅ Real-time status updates during processing
+✅ Audio player loads within 2 seconds
+✅ Search results appear within 1 second
+✅ Export generation completes within 5 seconds
+✅ System handles 10+ concurrent transcriptions
+
+Security Requirements
+✅ RLS policies prevent cross-user transcript access
+✅ API keys are never exposed to client
+✅ Audio files are validated before transcription
+✅ Rate limiting prevents API abuse
+✅ User authentication required for all operations
+
+🚀 Implementation Phases
+
+Phase 1: OpenAI Integration
+Set up OpenAI API client with proper error handling
+Implement Whisper API integration
+Create transcription API endpoints
+Add status tracking and progress updates
+Test with various audio formats and sizes
+
+Phase 2: Database Schema
+Create transcription jobs table
+Update transcripts table with new fields
+Implement RLS policies for transcript access
+Add indexes for performance optimization
+Test database operations and security
+
+Phase 3: Audio Player
+Create HTML5 audio player component
+Implement synchronized transcript highlighting
+Add playback controls and keyboard shortcuts
+Create mobile-responsive design
+Test accessibility and usability
+
+Phase 4: Transcript Management
+Create transcript viewer and editor components
+Implement search and highlight functionality
+Add export and sharing features
+Create version control system
+Test editing and collaboration features
+
+Phase 5: Library Integration
+Update call library with transcription status
+Add filtering and search capabilities
+Create bulk processing options
+Implement progress tracking
+Test end-to-end user workflow
+
+📁 File Structure
+
+app/
+├── calls/
+│   └── [id]/
+│       └── page.tsx                    # Individual call detail page
+├── api/
+│   ├── transcribe/
+│   │   ├── route.ts                   # Transcription endpoint
+│   │   ├── status/route.ts            # Status tracking
+│   │   └── process/route.ts           # Background processing
+│   └── transcripts/
+│       ├── route.ts                   # Transcript CRUD
+│       └── export/route.ts            # Export functionality
+├── components/
+│   ├── AudioPlayer.tsx                # HTML5 audio player
+│   ├── TranscriptViewer.tsx           # Transcript display
+│   ├── TranscriptEditor.tsx           # Inline editing
+│   ├── TranscriptionStatus.tsx        # Processing status
+│   ├── TranscriptSync.tsx             # Synchronized highlighting
+│   ├── PlaybackControls.tsx           # Audio controls
+│   ├── TranscriptSearch.tsx           # Search functionality
+│   ├── TranscriptExport.tsx           # Export options
+│   └── CallCard.tsx                   # Updated call cards
+
+lib/
+├── openai.ts                          # OpenAI API client
+├── transcription-queue.ts              # Queue management
+├── transcription-worker.ts             # Background processing
+├── audio-utils.ts                     # Audio processing utilities
+└── transcript-utils.ts                # Transcript utilities
+
+types/
+├── transcription.ts                    # Transcription types
+├── audio.ts                           # Audio player types
+└── transcript.ts                      # Transcript types
+
+migrations/
+└── 005_transcription_schema.sql       # Database schema updates
+
+🔒 Security Considerations
+
+API Key Protection
+Server-side only: OpenAI API keys never exposed to client
+Environment variables: Secure key management
+Rate limiting: Prevent API abuse and cost overruns
+Usage monitoring: Track API usage and costs
+Error handling: Secure error messages without key exposure
+
+Data Protection
+User Isolation: RLS policies ensure users only see their own transcripts
+Input Validation: Audio file validation before transcription
+Access Control: Authenticated users only
+Audit Logging: Track transcript access and modifications
+Data Retention: Configurable transcript retention policies
+
+File Security
+Audio file validation: Verify file integrity before transcription
+Size limits: Enforce Whisper API limits (25MB max)
+Format validation: Only allow supported audio formats
+Virus scanning: Consider adding virus scanning for audio files
+Secure storage: Encrypted storage for sensitive audio files
+
+🧪 Testing Strategy
+
+Unit Tests
+OpenAI API integration functions
+Transcription status tracking
+Audio player functionality
+Transcript editing and saving
+Export and sharing features
+
+Integration Tests
+End-to-end transcription workflow
+Audio player synchronization
+Database operations and RLS policies
+Error handling and recovery
+Concurrent transcription processing
+
+User Acceptance Tests
+Upload audio files and verify transcription
+Test audio player with various file types
+Verify transcript editing and auto-save
+Test search and export functionality
+Verify user data isolation and security
+
+Performance Tests
+Large file transcription processing
+Concurrent user transcription requests
+Audio player performance with long files
+Database query performance with large datasets
+API rate limiting and error handling
+
+📚 Documentation Updates
+
+Update existing documentation:
+README.md - Add transcription features and setup instructions
+CODEFLOW.md - Update milestone 4 with transcription capabilities
+PROJECT_STRUCTURE.md - Add new files and components
+Create TRANSCRIPTION_SETUP.md - Transcription system setup guide
+Create API_DOCUMENTATION.md - OpenAI API integration guide
+
+🎯 Success Criteria
+
+Done looks like:
+✅ User uploads audio file and sees automatic transcription processing
+✅ Audio player plays synchronized with transcript highlighting
+✅ User can edit transcript with real-time auto-save
+✅ Search functionality works across all transcript content
+✅ Export options generate files in multiple formats
+✅ Background processing doesn't block user interface
+✅ System is ready for AI analysis pipeline (Milestone 5)
+
+🚀 Next Steps After Completion
+
+Immediate (Milestone 5)
+GPT-4 integration for transcript summarization
+Sentiment analysis and key topic extraction
+Action item detection and categorization
+Batch processing for existing transcripts
+
+Future Enhancements
+Speaker diarization and identification
+Advanced timestamp alignment
+Collaborative transcript editing
+Real-time transcription for live calls
+Integration with compliance systems
+
+🔧 OpenAI Whisper Integration Details
+
+API Configuration
+Model: whisper-1 (latest stable version)
+File size limit: 25MB per request
+Supported formats: MP3, WAV, M4A, AAC, FLAC, M4B
+Language detection: Automatic or specify language
+Response format: JSON with transcript and metadata
+
+Error Handling
+Rate limiting: Handle OpenAI API rate limits
+File size errors: Graceful handling of oversized files
+Network errors: Retry logic with exponential backoff
+Authentication errors: Proper error messages
+Processing errors: Detailed error logging and user feedback
+
+Cost Management
+Usage tracking: Monitor API usage and costs
+Batch processing: Optimize for cost efficiency
+Caching: Cache transcripts to avoid re-processing
+Rate limiting: Prevent excessive API calls
+Budget alerts: Set up cost monitoring and alerts
+
+Be explicit in your response: Show file tree and contents, include commands the developer must run locally, and provide a brief checklist for verifying the transcription system works (e.g., uploading a test audio file, verifying transcription, testing audio player, checking transcript editing).
+
+Finish by creating a git commit message suggestion and recommended branch name milestone/04-transcription-pipeline.
+
+Keep the response machine-readable: for every file include a header with the file path (```path/to/file```) followed by content.

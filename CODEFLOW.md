@@ -1,9 +1,9 @@
 # DentalCallInsights - Development Flow & Architecture
 
-## Current Status: 🚧 Milestone 3 In Progress (Audio Upload & Storage)
+## Current Status: ✅ Milestone 5 Complete (AI Insights)
 
-**Branch:** `milestone/03-audio-upload-and-storage`  
-**Last Updated:** December 2024
+**Branch:** `milestone/05-ai-insights`  
+**Last Updated:** October 2025
 
 ### Milestone 1 Complete ✅
 - Next.js 14 + TypeScript scaffold with App Router
@@ -25,13 +25,31 @@
 - Type-safe auth utilities and validation
 - Comprehensive error handling
 
-### Milestone 3 In Progress 🚧
-- Audio file upload interface development
-- Supabase Storage bucket configuration
-- File upload component with drag-and-drop
-- Upload progress indicators and validation
-- Metadata form for call information
-- Storage RLS policies for user isolation
+### Milestone 3 Complete ✅
+- Audio file upload and storage
+- CSV upload with filename matching
+- Supabase Storage integration with RLS
+- Support for calls without recordings
+- Real-time upload progress tracking
+- Duplicate prevention with upsert logic
+
+### Milestone 4 Complete ✅
+- OpenAI Whisper integration for transcription
+- Background job processing
+- Call detail pages with audio player
+- Transcript viewer and editor
+- Bulk transcription capability
+- Auto-detection of English and Spanish
+
+### Milestone 5 Complete ✅
+- GPT-4o integration for AI insights
+- Call summaries and key points
+- Sentiment analysis system
+- Action items tracking
+- Red flags detection
+- Smart caching (30-day TTL)
+- Call length validation (6+ seconds)
+- Export functionality (Text/JSON)
 
 ## Architecture Overview
 
@@ -228,40 +246,36 @@ Key Benefits:
 
 ---
 
-### 🚧 Milestone 3: Upload & Storage (In Progress)
+### ✅ Milestone 3: Upload & Storage (Complete)
 
-**Why next:** Foundation for all processing
+**Completed features:**
 
-- [ ] File upload component with drag-and-drop
-- [ ] Supabase Storage bucket setup
-- [ ] Upload progress indicator
-- [ ] Metadata form (patient ID, call type, date, tags)
-- [ ] Client-side validation (file type, size)
-- [ ] Storage RLS policies for user isolation
-- [ ] Upload error handling and retry logic
-- [ ] CSV call data upload functionality
-- [ ] Call recording to CSV data matching system
-- [ ] CSV data validation and parsing
+- ✅ File upload component with drag-and-drop
+- ✅ Supabase Storage bucket setup
+- ✅ Upload progress indicator with real-time tracking
+- ✅ CSV call data upload functionality
+- ✅ Direct filename matching (simplified approach)
+- ✅ Client-side validation (file type, size)
+- ✅ Storage RLS policies for user isolation
+- ✅ Upload error handling and retry logic
+- ✅ Support for calls without recordings
+- ✅ Duplicate prevention with upsert logic
 
-**Files to create:**
+**Files created:**
 
-- `components/AudioUploader.tsx`
-- `components/CsvUploader.tsx`
-- `components/CallMatcher.tsx`
-- `app/api/upload/route.ts` (server-side handler)
-- `app/api/csv-upload/route.ts` (CSV upload handler)
-- `app/api/match-calls/route.ts` (call matching API)
-- `lib/storage.ts` (Supabase Storage helpers)
-- `lib/csv-parser.ts` (CSV parsing utilities)
-- `lib/call-matcher.ts` (call matching logic)
-- `types/upload.ts` (Upload-related types)
-- `types/csv.ts` (CSV data types)
+- ✅ `app/api/upload/route.ts` (unified upload handler)
+- ✅ `lib/storage.ts` (Supabase Storage helpers)
+- ✅ `lib/csv-parser-simplified.ts` (simplified CSV parsing)
+- ✅ `types/upload.ts` (Upload-related types)
+- ✅ `app/upload/page.tsx` (upload UI with progress)
 
-**Supabase setup:**
+**Key improvements:**
 
-- Create storage bucket: `call-recordings`
-- Set appropriate RLS policies for user isolation
-- Configure file size limits and allowed types
+- Simplified workflow with direct filename matching
+- No complex matching algorithms needed
+- Support for mixed data (some calls with recordings, some without)
+- Real-time upload progress with percentage
+- Automatic retry on network errors
 
 ---
 

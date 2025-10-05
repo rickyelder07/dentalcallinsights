@@ -1,7 +1,7 @@
 # DentalCallInsights - Project Structure
 
-**Current Status:** ✅ Milestone 2 Complete, 🚧 Milestone 3 In Progress  
-**Branch:** `milestone/03-audio-upload-and-storage`  
+**Current Status:** ✅ Milestone 3 Complete, 🚧 Milestone 4 In Progress  
+**Branch:** `milestone/04-transcription-pipeline`  
 **Last Updated:** December 2024
 
 ```
@@ -27,8 +27,8 @@ dentalcallinsights/
 │       │   └── page.tsx           # User profile & password change
 │       ├── reset-password/         # ✅ Complete password reset
 │       │   └── page.tsx           # Password reset flow
-│       ├── upload/                 # 🚧 In Progress (Milestone 3)
-│       │   └── page.tsx           # Audio upload interface
+│       ├── upload/                 # ✅ Complete (Milestone 3)
+│       │   └── page.tsx           # Audio upload interface with progress
 │       ├── library/                # 📅 Planned (Milestone 7)
 │       │   └── page.tsx           # Call library with search
 │       ├── qa/                     # 📅 Planned (Milestone 8)
@@ -41,11 +41,13 @@ dentalcallinsights/
 │   ├── lib/
 │   │   ├── auth.ts                 # ✅ Authentication utilities
 │   │   ├── supabase.ts             # Supabase client + TypeScript types
-│   │   ├── csv-parser.ts           # 🚧 CSV parsing utilities
-│   │   └── call-matcher.ts         # 🚧 Call matching logic
+│   │   ├── csv-parser-simplified.ts # ✅ Simplified CSV parsing
+│   │   ├── storage.ts              # ✅ Supabase Storage utilities
+│   │   └── upload.ts               # ✅ Upload utilities
 │   └── types/
 │       ├── auth.ts                 # ✅ TypeScript auth types
-│       └── csv.ts                  # 🚧 CSV data types
+│       ├── upload.ts               # ✅ Upload and CSV types
+│       └── storage.ts              # ✅ Storage types
 │
 ├── 🗄️ DATABASE
 │   └── migrations/
@@ -56,10 +58,9 @@ dentalcallinsights/
 │       ├── 002_enable_rls.sql      # ✅ Row Level Security policies
 │       │                           # - User data isolation
 │       │                           # - Secure multi-tenant access
-│       └── 004_csv_call_data.sql  # 🚧 CSV call data table and matching
-│                                   # - csv_call_data table
-│                                   # - Call matching functions
-│                                   # - RLS policies for CSV data
+│       ├── 003_simplified_call_storage.sql # ✅ Unified calls table with CSV data
+│       ├── 003_storage_setup.sql   # ✅ Supabase Storage setup
+│       └── 004_prevent_duplicates.sql # ✅ Duplicate prevention
 │
 ├── 🔐 SECURITY
 │   └── middleware.ts               # ✅ Route protection middleware

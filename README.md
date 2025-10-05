@@ -29,13 +29,39 @@ Transform dental call recordings into actionable insights with AI-powered transc
 - ✅ Simplified workflow (no complex matching needed)
 - ✅ User-isolated storage paths
 - ✅ Support for MP3, WAV, M4A, AAC files
+- ✅ Support for calls without recordings ("No Call Recording")
+- ✅ Real-time upload progress tracking
+- ✅ Duplicate prevention with upsert logic
+
+### ✅ Completed (Milestone 4)
+- ✅ OpenAI Whisper integration for transcription
+- ✅ Background job processing for transcriptions
+- ✅ Individual call detail pages with audio player
+- ✅ Transcript viewer and editor
+- ✅ Synchronized audio playback with transcript
+- ✅ Enhanced call library with transcript status
+- ✅ Bulk transcription with checkbox selection
+- ✅ Auto-detection of English and Spanish calls
+- ✅ Language display in call library and detail pages
+
+### ✅ Completed (Milestone 5)
+- ✅ GPT-4o integration for AI insights
+- ✅ Call summaries with key points and outcomes
+- ✅ Sentiment analysis (overall, patient satisfaction, staff performance)
+- ✅ Action items with priority and assignee tracking
+- ✅ Red flags and concerns detection
+- ✅ Smart caching to reduce API costs
+- ✅ Call length validation (6+ seconds)
+- ✅ Insights tab in call detail page
+- ✅ Export insights as Text or JSON
+- ✅ Manual regeneration capability
 
 ### 📅 Planned (Future Milestones)
-- ⏳ Automatic transcription of call recordings
-- ⏳ AI-generated summaries and sentiment analysis
 - ⏳ Vector embeddings for semantic search
-- ⏳ Searchable call library with filters
+- ⏳ Advanced call library filters
 - ⏳ QA dashboard and analytics
+- ⏳ Batch insights processing
+- ⏳ Custom insight templates
 
 ## 🏗️ Project Structure
 
@@ -55,7 +81,7 @@ Transform dental call recordings into actionable insights with AI-powered transc
 │   ├── signup/            # Sign up page (✅ Complete)
 │   ├── profile/           # User profile page (✅ Complete)
 │   ├── reset-password/    # Password reset flow (✅ Complete)
-│   ├── upload/            # Upload page (🚧 In Progress)
+│   ├── upload/            # Upload page (✅ Complete)
 │   ├── library/           # Call library page (📅 Planned)
 │   ├── qa/                # QA dashboard (📅 Planned)
 │   ├── layout.tsx         # Root layout with navigation
@@ -213,33 +239,17 @@ For detailed testing instructions, see `AUTHENTICATION_SETUP.md`.
 
 ### `calls` Table
 
-Stores audio file metadata and references.
+Stores audio file metadata and CSV call data in a unified structure.
 
 ```sql
 id UUID PRIMARY KEY
 user_id UUID NOT NULL
-audio_path TEXT NOT NULL
-metadata JSONB DEFAULT '{}'
-csv_call_id UUID -- Links to csv_call_data table
-created_at TIMESTAMPTZ
-updated_at TIMESTAMPTZ
-```
-
-**Indexes:**
-
-- `user_id` - for user-specific queries
-- `created_at` - for time-based sorting
-- `metadata` (GIN) - for flexible JSONB queries
-- `csv_call_id` - for CSV data correlation
-
-### `csv_call_data` Table
-
-Stores uploaded CSV call data for matching with recordings.
-
-```sql
-id UUID PRIMARY KEY
-user_id UUID NOT NULL
-call_time TIMESTAMPTZ NOT NULL
+filename TEXT NOT NULL -- Audio filename or "No Call Recording"
+audio_path TEXT NOT NULL DEFAULT '' -- Storage path or empty for no recording
+file_size BIGINT
+file_type TEXT
+upload_status TEXT DEFAULT 'pending'
+call_time TIMESTAMPTZ
 call_direction TEXT -- 'Inbound' or 'Outbound'
 source_number TEXT
 source_name TEXT
@@ -247,18 +257,20 @@ source_extension TEXT
 destination_number TEXT
 destination_extension TEXT
 call_duration_seconds INTEGER
-disposition TEXT -- 'answered', 'voicemail', etc.
+disposition TEXT
 time_to_answer_seconds INTEGER
 call_flow TEXT
+metadata JSONB DEFAULT '{}'
 created_at TIMESTAMPTZ
+updated_at TIMESTAMPTZ
 ```
 
 **Indexes:**
 
 - `user_id` - for user-specific queries
-- `call_time` - for time-based matching
-- `source_number` - for phone number matching
-- `destination_number` - for destination matching
+- `filename` - for filename lookups
+- `call_time` - for time-based sorting
+- `upload_status` - for status filtering
 
 ### `transcripts` Table
 
@@ -378,14 +390,16 @@ See `AUTHENTICATION_SETUP.md` for detailed instructions on testing Row Level Sec
 - ✅ Password reset flow
 - ✅ Session management with auto-refresh
 
-### 🚧 Milestone 3: Audio Upload & Storage (In Progress)
+### ✅ Milestone 3: Audio Upload & Storage (Complete)
 
-- [ ] File upload component with drag-and-drop
-- [ ] Supabase Storage integration
-- [ ] Upload progress and validation
-- [ ] Metadata form (patient ID, call type, etc.)
-- [ ] File type and size validation
-- [ ] Storage bucket configuration with RLS
+- ✅ File upload component with drag-and-drop
+- ✅ Supabase Storage integration
+- ✅ Upload progress and validation
+- ✅ CSV upload with direct filename matching
+- ✅ File type and size validation
+- ✅ Storage bucket configuration with RLS
+- ✅ Support for calls without recordings
+- ✅ Duplicate prevention and upsert logic
 
 ### Milestone 4: Transcription Pipeline
 

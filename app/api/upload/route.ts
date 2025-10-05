@@ -112,14 +112,20 @@ export async function POST(request: NextRequest) {
     const noRecordingRows = csvResult.rows.filter(row => row.filename === 'No Call Recording')
     for (const csvRow of noRecordingRows) {
       try {
-        // Check if call already exists
+        // Check if call already exists using more unique criteria
+        // Use phone numbers and time to identify unique calls
+        const uniqueKey = `${csvRow.call_time}_${csvRow.source_number || ''}_${csvRow.destination_number || ''}_${csvRow.direction}`
+        
         const { data: existingCall } = await supabase
           .from('calls')
           .select('id')
           .eq('user_id', user.id)
           .eq('filename', 'No Call Recording')
           .eq('call_time', csvRow.call_time)
-          .single()
+          .eq('source_number', csvRow.source_number || null)
+          .eq('destination_number', csvRow.destination_number || null)
+          .eq('call_direction', csvRow.direction)
+          .maybeSingle()  // Changed from .single() to handle multiple matches gracefully
 
         let callId: string | null = null
 
@@ -179,6 +185,7 @@ export async function POST(request: NextRequest) {
 
           if (dbError) {
             uploadErrors.push(`Failed to create record for call without recording: ${dbError.message}`)
+            console.error('Insert error for no-recording call:', dbError, csvRow)
             continue
           }
 
@@ -189,9 +196,9 @@ export async function POST(request: NextRequest) {
           callIds.push(callId)
         }
       } catch (error) {
-        uploadErrors.push(
-          `Error processing call without recording: ${error instanceof Error ? error.message : 'Unknown error'}`
-        )
+        const errorMsg = `Error processing call without recording at ${csvRow.call_time}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        uploadErrors.push(errorMsg)
+        console.error(errorMsg, csvRow)
       }
     }
 
@@ -248,13 +255,14 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if call already exists (based on user_id, filename, and call_time)
+        // Use maybeSingle() to gracefully handle cases where multiple matches exist
         const { data: existingCall } = await supabase
           .from('calls')
           .select('id')
           .eq('user_id', user.id)
           .eq('filename', file.name)
           .eq('call_time', csvRow.call_time)
-          .single()
+          .maybeSingle()
 
         let callId: string | null = null
 
