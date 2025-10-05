@@ -88,6 +88,40 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Check if call is too short (< 6 seconds)
+    const MIN_CALL_DURATION = 6
+    if (call.call_duration_seconds && call.call_duration_seconds < MIN_CALL_DURATION) {
+      // Create transcript record with "too short" message
+      const { error: upsertError } = await supabase
+        .from('transcripts')
+        .upsert(
+          {
+            call_id: callId,
+            transcript: 'Call too short to transcribe.',
+            raw_transcript: 'Call too short to transcribe.',
+            transcription_status: 'completed',
+            confidence_score: 0,
+            processing_started_at: new Date().toISOString(),
+            processing_completed_at: new Date().toISOString(),
+            edit_count: 0,
+          },
+          { onConflict: 'call_id' }
+        )
+
+      if (upsertError) {
+        console.error('Failed to create short call transcript:', upsertError)
+      }
+
+      return NextResponse.json(
+        {
+          message: 'Call too short to transcribe (< 6 seconds)',
+          callDuration: call.call_duration_seconds,
+          status: 'completed',
+        },
+        { status: 200 }
+      )
+    }
+
     // Check if transcription already exists
     const { data: existingTranscript } = await supabase
       .from('transcripts')
