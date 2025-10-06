@@ -20,6 +20,7 @@ import type { Transcript } from '@/types/transcript'
 export default function CallDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const supabase = createBrowserClient()
+  const callId = params.id // Extract id immediately
   const [call, setCall] = useState<Call | null>(null)
   const [transcript, setTranscript] = useState<Transcript | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
@@ -32,8 +33,11 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
 
   // Fetch call and transcript data
   useEffect(() => {
-    fetchCallData()
-  }, [params.id])
+    if (callId) {
+      fetchCallData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callId])
 
   const fetchCallData = async () => {
     try {
@@ -54,7 +58,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       const { data: callData, error: callError } = await supabase
         .from('calls')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', callId)
         .eq('user_id', session.user.id)
         .single()
 
@@ -69,7 +73,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       const { data: transcriptData } = await supabase
         .from('transcripts')
         .select('*')
-        .eq('call_id', params.id)
+        .eq('call_id', callId)
         .single()
 
       if (transcriptData) {
@@ -118,7 +122,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          callId: params.id,
+          callId: callId,
           // No language specified - Whisper will auto-detect
         }),
       })
@@ -148,7 +152,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         if (!session) return
 
         const response = await fetch(
-          `/api/transcribe/status?callId=${params.id}`,
+          `/api/transcribe/status?callId=${callId}`,
           {
             headers: {
               Authorization: `Bearer ${session.access_token}`,
@@ -212,6 +216,51 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
 
     // Refresh transcript data
     await fetchCallData()
+  }
+
+  // Re-apply user's transcription corrections
+  const handleReapplyCorrections = async () => {
+    if (!transcript) return
+
+    const confirmed = window.confirm(
+      'Re-apply your transcription corrections to this transcript?\n\n' +
+      'This will update the transcript based on your current correction rules in Profile > Transcription Corrections.'
+    )
+
+    if (!confirmed) return
+
+    try {
+      setIsLoading(true)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session) {
+        throw new Error('Not authenticated')
+      }
+
+      const response = await fetch(`/api/transcripts/${transcript.id}/apply-corrections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to apply corrections')
+      }
+
+      // Refresh transcript data
+      await fetchCallData()
+      alert('Corrections applied successfully!')
+    } catch (err) {
+      console.error('Error applying corrections:', err)
+      alert('Failed to apply corrections. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Format date
@@ -392,7 +441,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         {/* Transcription Status */}
         {(isTranscribing || transcript?.transcription_status === 'processing') && (
           <TranscriptionStatus
-            callId={params.id}
+            callId={callId}
             status={transcript?.transcription_status || 'processing'}
             progress={50}
             onComplete={() => fetchCallData()}
@@ -405,12 +454,21 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
             {/* Toggle between view and edit */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-900">Transcript</h2>
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
-              >
-                {isEditing ? '👁️ View Mode' : '✏️ Edit Mode'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReapplyCorrections}
+                  className="px-4 py-2 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors font-medium"
+                  title="Re-apply your transcription correction rules"
+                >
+                  🔄 Apply Corrections
+                </button>
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+                >
+                  {isEditing ? '👁️ View Mode' : '✏️ Edit Mode'}
+                </button>
+              </div>
             </div>
 
             {isEditing ? (
@@ -434,7 +492,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         {/* Insights Tab */}
         {transcript && transcript.transcription_status === 'completed' && activeTab === 'insights' && (
           <InsightsPanel 
-            callId={params.id} 
+            callId={callId} 
             callDuration={call?.call_duration_seconds}
           />
         )}
@@ -443,7 +501,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         {transcript && transcript.transcription_status === 'failed' && (
           <div>
             <TranscriptionStatus
-              callId={params.id}
+              callId={callId}
               status="failed"
               errorMessage={transcript.error_message}
             />

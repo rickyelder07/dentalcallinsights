@@ -300,13 +300,18 @@ async function processTranscription(
       : []
     const processingDuration = Math.floor((Date.now() - startTime) / 1000)
 
+    // Apply user-managed corrections to raw transcript
+    const { applyUserCorrections } = await import('@/lib/transcription-corrections')
+    const correctedText = await applyUserCorrections(whisperResponse.text, userId)
+
     // Update transcript with results - use upsert to ensure it exists
     const { error: transcriptError } = await supabase
       .from('transcripts')
       .upsert({
         call_id: callId,
         raw_transcript: whisperResponse.text,
-        transcript: whisperResponse.text, // Also update legacy field
+        edited_transcript: correctedText, // Always save corrected version
+        transcript: correctedText, // Legacy field shows corrected
         transcription_status: 'completed',
         confidence_score: confidenceScore,
         language: whisperResponse.language || options.language || 'en',

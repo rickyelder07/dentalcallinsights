@@ -466,6 +466,11 @@ export function calculateSimilarity(text1: string, text2: string): number {
 }
 
 // ============================================
+// USER CORRECTIONS (POST-PROCESSING)
+// ============================================
+// Note: User corrections are applied server-side only in lib/transcription-corrections.ts
+
+// ============================================
 // EXPORTS
 // ============================================
 

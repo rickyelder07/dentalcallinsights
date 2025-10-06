@@ -1,0 +1,333 @@
+You are an expert full-stack engineer and will act as my Cursor copilot. Project: "DentalCallInsights" — a Next.js + Supabase web app for turning call MP3s + call metadata into searchable transcripts, summaries, sentiment, and actionable insights. I need you to implement Milestone 6: Embeddings and Search with vector similarity search focused on semantic call discovery and intelligent filtering.
+
+🎯 Project Context
+Current Status: ✅ Milestones 1-5 Complete (Authentication, User Management, Audio Upload & Storage, Transcription Pipeline, AI Insights with GPT-4o-mini)
+Target: 🚧 Milestone 6 - Embeddings and Search
+Branch: milestone/06-embeddings-and-search
+Problem: Dental office managers have hundreds of transcribed calls with AI insights but need to quickly find specific calls by meaning, not just keywords. They need to search by concepts like "patient complaints", "billing issues", "appointment scheduling", or "emergency situations" across all their call data.
+Core User Action: Search calls by meaning → Get semantically similar results → Filter by insights → Find relevant calls instantly.
+Aha Moment: Managers can find all calls about "insurance problems" or "patient satisfaction issues" in seconds, even if the exact words weren't used.
+
+📋 Requirements & Constraints
+Tech Stack: Next.js 14 (App Router), TypeScript, TailwindCSS, Supabase (Auth, Postgres, Storage, pgvector), OpenAI GPT-4o-mini, Vercel
+Code Style: TypeScript strict mode, ESLint, Prettier, functional React components with hooks
+Security: RLS policies for user data isolation, API key protection (server-side only), input validation
+Performance: Efficient vector storage, fast similarity search, background embedding generation
+Cost Management: Batch embedding generation, caching, cost tracking for embedding API calls
+Integration: Build on existing transcription and insights system, leverage existing call data
+
+🎯 Core Features (4 Only)
+
+1. **Semantic Search**
+   - Natural language search across all call transcripts
+   - Find calls by meaning, not just exact keywords
+   - Search by concepts: "patient complaints", "billing issues", "emergency calls"
+   - Real-time search results with relevance scoring
+   - Search across transcript content, summaries, and insights
+
+2. **Vector Embeddings**
+   - Generate embeddings for all call transcripts using OpenAI text-embedding-3-small
+   - Store embeddings in Supabase pgvector for fast similarity search
+   - Background processing for existing calls
+   - Auto-generate embeddings for new transcriptions
+   - Embedding versioning and cache management
+
+3. **Advanced Filtering**
+   - Filter by sentiment (positive, negative, neutral, mixed)
+   - Filter by call outcome (resolved, pending, escalated, no resolution)
+   - Filter by date range and call duration
+   - Filter by action items and red flags
+   - Combine semantic search with structured filters
+
+4. **Search Analytics**
+   - Search history and popular queries
+   - Most searched concepts and patterns
+   - Call discovery insights (which calls are found most often)
+   - Search performance metrics
+   - Export search results to CSV
+
+🎯 Deliverables (create real files; show file path + file content)
+
+1. Vector Embeddings System
+lib/embeddings.ts - OpenAI text-embedding-3-small client for generating embeddings
+lib/vector-search.ts - pgvector similarity search utilities
+lib/embedding-cache.ts - Caching layer for embeddings to prevent redundant API calls
+Background job processing for embedding generation
+
+2. Search API Endpoints
+app/api/search/semantic/route.ts - Semantic search across call transcripts
+app/api/search/embeddings/route.ts - Generate embeddings for specific calls
+app/api/search/batch-embeddings/route.ts - Batch generate embeddings for multiple calls
+app/api/search/analytics/route.ts - Search analytics and metrics
+
+3. Search UI Components
+app/components/SearchBar.tsx - Advanced search input with autocomplete
+app/components/SearchResults.tsx - Display search results with relevance scores
+app/components/SearchFilters.tsx - Filter sidebar (sentiment, outcome, date, etc.)
+app/components/SearchAnalytics.tsx - Search history and popular queries
+app/components/VectorSearch.tsx - Unified search interface
+
+4. Database Schema Updates
+migrations/007_embeddings_schema.sql - pgvector setup and embeddings table
+migrations/008_search_analytics_schema.sql - Search analytics and user behavior tracking
+Store: embeddings, search queries, result clicks, user preferences
+Indexes: Vector similarity, search performance, analytics queries
+
+5. Enhanced Library Page
+app/library/page.tsx - Update with semantic search capabilities
+Search bar integration
+Advanced filtering options
+Search result highlighting
+Export search results functionality
+
+6. TypeScript Types
+types/embeddings.ts - Vector embedding types and search interfaces
+types/search.ts - Search query, result, and analytics types
+Comprehensive type definitions for search functionality
+
+🔧 Technical Specifications
+
+Embedding Model Configuration
+Model: text-embedding-3-small (cost-effective, high quality)
+Dimensions: 1536 (standard for OpenAI embeddings)
+Batch size: 100 calls per batch (API rate limit consideration)
+Context window: 8192 tokens (sufficient for most transcripts)
+Cost: ~$0.00002 per 1K tokens (very cost-effective)
+
+Vector Storage (Supabase pgvector)
+Extension: pgvector for vector similarity search
+Index type: HNSW (Hierarchical Navigable Small World) for fast search
+Similarity metric: Cosine similarity (standard for text embeddings)
+Storage: 1536-dimensional vectors per call transcript
+Performance: Sub-second search across thousands of calls
+
+Search Performance Requirements
+Search latency: < 500ms for semantic search
+Index size: Support 10,000+ calls with fast search
+Concurrent users: Handle 50+ simultaneous searches
+Cache hit rate: > 80% for repeated queries
+Background processing: Non-blocking embedding generation
+
+Cost Management Strategy
+Embedding generation: Batch process to minimize API calls
+Caching: Store embeddings permanently, never regenerate
+Search optimization: Efficient vector indexing and query optimization
+User limits: Optional daily/monthly embedding quotas
+Cost tracking: Per-user embedding generation costs
+
+🎯 Implementation Phases
+
+Phase 1: Vector Infrastructure (Week 1)
+- Set up pgvector extension in Supabase
+- Create embeddings table with proper indexes
+- Implement OpenAI text-embedding-3-small client
+- Build background embedding generation system
+- Test with small dataset (100 calls)
+
+Phase 2: Search Engine (Week 2)
+- Implement semantic search API endpoints
+- Build vector similarity search with pgvector
+- Create search result ranking and scoring
+- Add search analytics and tracking
+- Performance optimization and testing
+
+Phase 3: Search UI (Week 3)
+- Build advanced search interface
+- Implement real-time search with debouncing
+- Add search filters and faceted search
+- Create search results display with highlighting
+- Mobile-responsive search experience
+
+Phase 4: Analytics & Optimization (Week 4)
+- Implement search analytics dashboard
+- Add search history and popular queries
+- Build search performance monitoring
+- Optimize search algorithms and caching
+- User testing and feedback integration
+
+Phase 5: Production & Documentation (Week 5)
+- Production deployment and monitoring
+- Comprehensive documentation and guides
+- User training materials and tutorials
+- Performance benchmarking and optimization
+- Final testing and bug fixes
+
+🎯 File Structure
+
+```
+app/
+├── api/
+│   └── search/
+│       ├── semantic/route.ts           # Semantic search endpoint
+│       ├── embeddings/route.ts         # Generate embeddings
+│       ├── batch-embeddings/route.ts   # Batch embedding generation
+│       └── analytics/route.ts          # Search analytics
+├── components/
+│   ├── SearchBar.tsx                   # Advanced search input
+│   ├── SearchResults.tsx              # Search results display
+│   ├── SearchFilters.tsx              # Filter sidebar
+│   ├── SearchAnalytics.tsx            # Search analytics
+│   └── VectorSearch.tsx               # Unified search interface
+└── library/
+    └── page.tsx                       # Enhanced with search
+
+lib/
+├── embeddings.ts                      # OpenAI embeddings client
+├── vector-search.ts                   # pgvector search utilities
+└── embedding-cache.ts                 # Embedding caching
+
+types/
+├── embeddings.ts                      # Vector embedding types
+└── search.ts                          # Search and analytics types
+
+migrations/
+├── 007_embeddings_schema.sql          # pgvector and embeddings table
+└── 008_search_analytics_schema.sql   # Search analytics tables
+```
+
+🎯 Security Considerations
+
+API Key Protection
+- OpenAI API key server-side only (never exposed to client)
+- Rate limiting on embedding generation endpoints
+- User authentication required for all search operations
+- Input validation and sanitization for search queries
+
+Data Privacy
+- RLS policies for user-specific search results
+- No cross-user data access in search results
+- Secure vector storage with user isolation
+- Search query logging with privacy controls
+
+Performance Security
+- Search query rate limiting per user
+- Vector search result limits (prevent data dumping)
+- Background job security for embedding generation
+- Secure caching with user-specific keys
+
+🎯 Cost Analysis
+
+Embedding Generation Costs
+Model: text-embedding-3-small
+Cost: $0.00002 per 1K tokens
+Average transcript: ~2,000 tokens
+Cost per call: ~$0.00004
+1,000 calls: ~$0.04
+10,000 calls: ~$0.40
+Monthly (5,000 calls): ~$0.20
+
+Search Operation Costs
+Vector search: Free (Supabase pgvector)
+API calls: Minimal (cached results)
+Storage: ~$0.01 per 1,000 vectors
+Total search cost: ~$0.01 per 1,000 searches
+
+Monthly Cost Estimates
+Small office (1,000 calls): ~$0.25
+Medium office (5,000 calls): ~$1.25
+Large office (20,000 calls): ~$5.00
+Cost per search: < $0.001
+
+🎯 Success Metrics
+
+Technical Performance
+- Search latency: < 500ms
+- Embedding generation: < 5 seconds per call
+- Search accuracy: > 90% relevant results
+- System uptime: > 99.5%
+
+User Experience
+- Search adoption: > 80% of users use search weekly
+- Search satisfaction: > 4.5/5 rating
+- Time to find calls: < 30 seconds average
+- Search success rate: > 85% of searches return useful results
+
+Business Impact
+- Call discovery: 5x faster than manual browsing
+- User productivity: 3x more calls reviewed per hour
+- Data utilization: 90% of calls become searchable
+- Cost efficiency: < $0.01 per search operation
+
+🎯 Testing Strategy
+
+Unit Testing
+- Embedding generation functions
+- Vector search algorithms
+- Search result ranking
+- Filter combination logic
+
+Integration Testing
+- End-to-end search workflows
+- Background embedding generation
+- Search performance under load
+- Cross-browser compatibility
+
+User Acceptance Testing
+- Search accuracy with real call data
+- User interface usability
+- Search performance expectations
+- Mobile search experience
+
+🎯 Documentation Requirements
+
+Technical Documentation
+- API endpoint documentation
+- Database schema documentation
+- Search algorithm explanations
+- Performance optimization guides
+
+User Documentation
+- Search tutorial and best practices
+- Advanced search techniques
+- Filter usage guides
+- Search analytics interpretation
+
+🎯 Next Steps After Completion
+
+Immediate (Week 6)
+- User training and onboarding
+- Performance monitoring and optimization
+- User feedback collection and analysis
+- Bug fixes and minor improvements
+
+Short-term (Months 2-3)
+- Advanced search features (fuzzy matching, synonyms)
+- Search result personalization
+- Integration with external systems
+- Mobile app search optimization
+
+Long-term (Months 4-6)
+- Machine learning for search improvement
+- Predictive search suggestions
+- Advanced analytics and insights
+- Multi-language search support
+
+🎯 GPT-4o-mini Details
+
+Model Selection
+Primary: text-embedding-3-small (embeddings)
+Fallback: gpt-4o-mini (search query enhancement)
+Reason: Cost-effective, high-quality embeddings
+Performance: 1536 dimensions, fast generation
+
+Prompt Engineering
+Search query enhancement: Improve user queries for better results
+Query expansion: Add synonyms and related terms
+Context understanding: Better search intent recognition
+Result ranking: Optimize search result relevance
+
+Token Usage Optimization
+Batch processing: Generate embeddings in batches
+Query optimization: Minimize API calls for search
+Caching strategy: Store and reuse embedding results
+Cost monitoring: Track and limit embedding generation
+
+🎯 Final Notes
+
+This milestone focuses on making the existing call data searchable and discoverable through semantic search. The goal is to transform static call libraries into dynamic, searchable knowledge bases that help dental office managers quickly find relevant calls by meaning, not just keywords.
+
+The implementation should be cost-effective, performant, and user-friendly, building on the solid foundation of Milestones 1-5 while adding powerful search capabilities that make the accumulated call data truly useful for daily operations.
+
+Focus on simplicity, performance, and user experience. The search should feel magical - users should be able to find exactly what they're looking for with natural language queries, even if they don't know the exact words used in the calls.
+
+Remember: This is about making data discoverable and actionable, not just searchable. Every search should lead to insights and better decision-making.

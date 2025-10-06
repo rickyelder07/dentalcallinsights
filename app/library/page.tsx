@@ -3,11 +3,13 @@
 /**
  * Call Library Page
  * Browse, search, and filter all call recordings with transcription status
+ * Now includes semantic search powered by vector embeddings
  */
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
+import VectorSearch from '../components/VectorSearch'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 
@@ -18,6 +20,7 @@ interface CallWithTranscript extends Call {
 export default function LibraryPage() {
   const router = useRouter()
   const supabase = createBrowserClient()
+  const [activeTab, setActiveTab] = useState<'browse' | 'search'>('browse')
   const [calls, setCalls] = useState<CallWithTranscript[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -28,6 +31,8 @@ export default function LibraryPage() {
   const [transcriptionProgress, setTranscriptionProgress] = useState<Record<string, string>>({})
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false)
   const [insightsProgress, setInsightsProgress] = useState<Record<string, string>>({})
+  const [isGeneratingEmbeddings, setIsGeneratingEmbeddings] = useState(false)
+  const [embeddingProgress, setEmbeddingProgress] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchCalls()
@@ -196,6 +201,27 @@ export default function LibraryPage() {
     return call.transcript && call.transcript.transcription_status === 'completed'
   }
 
+  // ============================================
+  // Insights cost estimation (gpt-4o-mini)
+  // ============================================
+  const INSIGHTS_INPUT_PER_1K = 0.00015 // USD per 1K tokens (input)
+  const INSIGHTS_OUTPUT_PER_1K = 0.00060 // USD per 1K tokens (output)
+
+  // Rough token estimator (1 token ≈ 4 chars)
+  const estimateTokens = (text: string) => Math.ceil((text?.length || 0) / 4)
+
+  // Estimate per-call insights cost using transcript length and expected output size
+  const estimateInsightsCostForTranscript = (
+    transcriptText: string,
+    expectedOutputTokens = 600 // summary + sentiment + items + flags
+  ) => {
+    const inputTokens = estimateTokens(transcriptText)
+    const inputCost = (inputTokens / 1000) * INSIGHTS_INPUT_PER_1K
+    const outputCost = (expectedOutputTokens / 1000) * INSIGHTS_OUTPUT_PER_1K
+    const total = inputCost + outputCost
+    return Number(total.toFixed(4))
+  }
+
   // Bulk transcribe selected calls
   const handleBulkTranscribe = async () => {
     const callsToTranscribe = filteredCalls.filter((c) => 
@@ -207,7 +233,20 @@ export default function LibraryPage() {
       return
     }
 
-    if (!confirm(`Start transcription for ${callsToTranscribe.length} call(s)?`)) {
+    // Cost estimate for Whisper transcription
+    const WHISPER_COST_PER_MIN = 0.006 // USD per audio minute (whisper-1)
+    const totalSeconds = callsToTranscribe.reduce((sum, c) => sum + (c.call_duration_seconds || 0), 0)
+    const totalMinutes = totalSeconds / 60
+    const estCost = totalMinutes * WHISPER_COST_PER_MIN
+
+    if (
+      !confirm(
+        `Start transcription for ${callsToTranscribe.length} call(s)?\n\n` +
+          `Estimated audio length: ${totalMinutes.toFixed(1)} min\n` +
+          `Whisper cost: $${WHISPER_COST_PER_MIN.toFixed(3)}/min\n` +
+          `Estimated total: $${estCost.toFixed(4)}`
+      )
+    ) {
       return
     }
 
@@ -276,7 +315,26 @@ export default function LibraryPage() {
       return
     }
 
-    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?\n\nThis will use OpenAI API credits (~$0.02 per call).`)) {
+    // Build dynamic cost estimate using transcript lengths
+    const perCallEstimates = callsForInsights.map((c) =>
+      estimateInsightsCostForTranscript(
+        c.transcript?.edited_transcript ||
+          c.transcript?.raw_transcript ||
+          c.transcript?.transcript ||
+          ''
+      )
+    )
+    const totalCost = perCallEstimates.reduce((a, b) => a + b, 0)
+    const avgPerCall = callsForInsights.length
+      ? totalCost / callsForInsights.length
+      : 0
+
+    if (!confirm(
+      `Generate AI insights for ${callsForInsights.length} call(s)?\n\n` +
+        `Estimated total: $${totalCost.toFixed(4)}  (avg ~$${avgPerCall.toFixed(4)} per call)\n` +
+        `Model: gpt-4o-mini\n` +
+        `Note: Actual cost varies with transcript length.`
+    )) {
       return
     }
 
@@ -347,6 +405,83 @@ export default function LibraryPage() {
     }
   }
 
+  // Bulk generate embeddings for selected calls
+  const handleBulkGenerateEmbeddings = async () => {
+    const selected = Array.from(selectedCalls)
+    
+    if (selected.length === 0) {
+      alert('Please select calls to generate embeddings')
+      return
+    }
+
+    // Filter only calls with completed transcripts
+    const callsWithTranscripts = selected.filter((callId) => {
+      const call = calls.find((c) => c.id === callId)
+      return call?.transcript?.transcription_status === 'completed'
+    })
+
+    if (callsWithTranscripts.length === 0) {
+      alert('Selected calls must have completed transcripts before generating embeddings')
+      return
+    }
+
+    const confirmed = confirm(
+      `Generate embeddings for ${callsWithTranscripts.length} call${callsWithTranscripts.length > 1 ? 's' : ''}?\n\n` +
+      `This will enable semantic search for these calls.\n` +
+      `Estimated cost: $${(callsWithTranscripts.length * 0.00004).toFixed(4)}`
+    )
+
+    if (!confirmed) return
+
+    setIsGeneratingEmbeddings(true)
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session) return
+
+      // Process in batches
+      for (const callId of callsWithTranscripts) {
+        setEmbeddingProgress((prev) => ({ ...prev, [callId]: 'generating' }))
+
+        try {
+          const response = await fetch('/api/search/embeddings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ callId }),
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            setEmbeddingProgress((prev) => ({ 
+              ...prev, 
+              [callId]: data.cached ? 'cached' : 'completed' 
+            }))
+          } else {
+            setEmbeddingProgress((prev) => ({ ...prev, [callId]: 'failed' }))
+          }
+        } catch (error) {
+          console.error(`Error generating embedding for ${callId}:`, error)
+          setEmbeddingProgress((prev) => ({ ...prev, [callId]: 'failed' }))
+        }
+
+        // Small delay between calls
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+
+      // Clear selection after completion
+      setSelectedCalls(new Set())
+    } finally {
+      setIsGeneratingEmbeddings(false)
+      setTimeout(() => setEmbeddingProgress({}), 3000)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -385,9 +520,54 @@ export default function LibraryPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Call Library</h1>
         <p className="text-gray-600">
-          Browse, search, and transcribe your call recordings.
+          {activeTab === 'browse' 
+            ? 'Browse, search, and transcribe your call recordings.'
+            : 'Search your calls using natural language semantic search.'}
         </p>
       </div>
+
+      {/* Tab Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('browse')}
+            className={`${
+              activeTab === 'browse'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              Browse
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('search')}
+            className={`${
+              activeTab === 'search'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Semantic Search
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">AI</span>
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      {/* Conditional Rendering Based on Active Tab */}
+      {activeTab === 'search' ? (
+        <VectorSearch />
+      ) : (
+        <div>
 
       {/* Error Display */}
       {error && (
@@ -487,6 +667,17 @@ export default function LibraryPage() {
               }`}
             >
               {isGeneratingInsights ? 'Generating...' : '🤖 AI Insights'}
+            </button>
+            <button
+              onClick={handleBulkGenerateEmbeddings}
+              disabled={isGeneratingEmbeddings}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                isGeneratingEmbeddings
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+            >
+              {isGeneratingEmbeddings ? 'Generating...' : '🔍 Generate Embeddings'}
             </button>
           </div>
         )}
@@ -613,6 +804,11 @@ export default function LibraryPage() {
                             (Insights: {insightsProgress[call.id]})
                           </span>
                         )}
+                        {embeddingProgress[call.id] && (
+                          <span className="ml-2 text-xs text-green-500">
+                            (Embedding: {embeddingProgress[call.id]})
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -662,6 +858,8 @@ export default function LibraryPage() {
             </div>
           </div>
         </div>
+      )}
+      </div>
       )}
     </div>
   )
