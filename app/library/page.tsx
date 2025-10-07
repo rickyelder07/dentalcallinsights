@@ -15,6 +15,8 @@ import type { Transcript } from '@/types/transcript'
 
 interface CallWithTranscript extends Call {
   transcript?: Transcript | null
+  hasInsights?: boolean
+  hasEmbeddings?: boolean
 }
 
 export default function LibraryPage() {
@@ -84,10 +86,26 @@ export default function LibraryPage() {
 
       console.log('Transcripts query result:', transcriptsData)
 
-      // Transform data - match transcripts to calls
+      // Fetch insights presence for these calls
+      const { data: insightsRows } = await supabase
+        .from('insights')
+        .select('call_id')
+        .in('call_id', callIds)
+      const callIdToHasInsights = new Set<string>((insightsRows || []).map((r: any) => r.call_id))
+
+      // Fetch embeddings presence for these calls
+      const { data: embeddingRows } = await supabase
+        .from('embeddings')
+        .select('call_id')
+        .in('call_id', callIds)
+      const callIdToHasEmbeddings = new Set<string>((embeddingRows || []).map((r: any) => r.call_id))
+
+      // Transform data - match transcripts to calls and attach AI status flags
       const transformedCalls: CallWithTranscript[] = callsData.map((call: any) => ({
         ...call,
         transcript: transcriptsData?.find((t: any) => t.call_id === call.id) || null,
+        hasInsights: callIdToHasInsights.has(call.id),
+        hasEmbeddings: callIdToHasEmbeddings.has(call.id),
       }))
 
       console.log('Transformed calls:', transformedCalls.length)
@@ -131,18 +149,55 @@ export default function LibraryPage() {
       return <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">No Transcript</span>
     }
 
-    switch (call.transcript.transcription_status) {
+    const status = call.transcript.transcription_status
+    const hasInsights = call.hasInsights
+    const hasEmbeddings = call.hasEmbeddings
+
+    // Base transcription status
+    let baseStatus = ''
+    let baseClass = ''
+    
+    switch (status) {
       case 'completed':
-        return <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">✓ Transcribed</span>
+        baseStatus = '✓ Transcribed'
+        baseClass = 'bg-green-100 text-green-700'
+        break
       case 'processing':
-        return <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">⏳ Processing</span>
+        baseStatus = '⏳ Processing'
+        baseClass = 'bg-blue-100 text-blue-700'
+        break
       case 'failed':
-        return <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">✗ Failed</span>
+        baseStatus = '✗ Failed'
+        baseClass = 'bg-red-100 text-red-700'
+        break
       case 'pending':
-        return <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">⋯ Pending</span>
+        baseStatus = '⋯ Pending'
+        baseClass = 'bg-yellow-100 text-yellow-700'
+        break
       default:
-        return <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Unknown</span>
+        baseStatus = 'Unknown'
+        baseClass = 'bg-gray-100 text-gray-700'
     }
+
+    // Add AI status indicators
+    const aiStatus = []
+    if (hasInsights) aiStatus.push('🤖')
+    if (hasEmbeddings) aiStatus.push('🔍')
+    
+    const aiIndicators = aiStatus.length > 0 ? ` ${aiStatus.join('')}` : ''
+
+    return (
+      <div className="flex flex-col space-y-1">
+        <span className={`px-2 py-1 text-xs rounded ${baseClass}`}>
+          {baseStatus}
+        </span>
+        {aiStatus.length > 0 && (
+          <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
+            AI Ready{aiIndicators}
+          </span>
+        )}
+      </div>
+    )
   }
 
   // Get language display
@@ -706,6 +761,18 @@ export default function LibraryPage() {
             {calls.filter((c) => !c.transcript || c.transcript.transcription_status === 'pending').length}
           </div>
           <div className="text-sm text-gray-600">Pending</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="text-2xl font-bold text-purple-600">
+            {calls.filter((c) => c.hasInsights).length}
+          </div>
+          <div className="text-sm text-gray-600">AI Insights Ready</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="text-2xl font-bold text-green-700">
+            {calls.filter((c) => c.hasEmbeddings).length}
+          </div>
+          <div className="text-sm text-gray-600">Embeddings Ready</div>
         </div>
       </div>
 

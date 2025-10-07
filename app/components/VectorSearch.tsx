@@ -10,6 +10,7 @@ import { createBrowserClient } from '@/lib/supabase'
 import SearchBar from './SearchBar'
 import SearchFilters from './SearchFilters'
 import SearchResults from './SearchResults'
+import SearchDebug from './SearchDebug'
 import type { SearchResult, SearchFilters as FilterType } from '@/types/embeddings'
 
 export default function VectorSearch() {
@@ -91,6 +92,11 @@ export default function VectorSearch() {
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Debug Panel */}
+      <div className="mb-8">
+        <SearchDebug />
+      </div>
+      
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">

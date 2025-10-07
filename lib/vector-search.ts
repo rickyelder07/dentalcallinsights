@@ -118,7 +118,7 @@ export async function searchSimilarCalls(
     }
     
     // Merge similarity scores with call data
-    const results: SearchResult[] = calls.map((call: any) => {
+    let results: SearchResult[] = calls.map((call: any) => {
       const similarityItem = similarityData.find((s: any) => s.call_id === call.id)
       const transcript = call.transcripts?.[0]
       const insights = call.insights?.[0]
@@ -143,6 +143,11 @@ export async function searchSimilarCalls(
         hasActionItems: insights?.action_items?.length > 0,
       }
     })
+    
+    // Apply post-query filters for complex joins
+    if (options.filters) {
+      results = applyPostQueryFilters(results, options.filters)
+    }
     
     // Sort by similarity score (highest first)
     results.sort((a, b) => b.similarity - a.similarity)
@@ -233,16 +238,6 @@ export async function findSimilarCallsByCallId(
 function applyFilters(query: any, filters: SearchFilters): any {
   let filteredQuery = query
   
-  // Sentiment filter
-  if (filters.sentiment && filters.sentiment.length > 0) {
-    filteredQuery = filteredQuery.in('insights.overall_sentiment', filters.sentiment)
-  }
-  
-  // Outcome filter
-  if (filters.outcome && filters.outcome.length > 0) {
-    filteredQuery = filteredQuery.in('insights.call_outcome', filters.outcome)
-  }
-  
   // Date range filter
   if (filters.dateFrom) {
     filteredQuery = filteredQuery.gte('call_time', filters.dateFrom)
@@ -259,12 +254,40 @@ function applyFilters(query: any, filters: SearchFilters): any {
     filteredQuery = filteredQuery.lte('call_duration_seconds', filters.maxDuration)
   }
   
-  // Language filter
-  if (filters.language && filters.language.length > 0) {
-    filteredQuery = filteredQuery.in('transcripts.language', filters.language)
-  }
+  // Note: Sentiment, outcome, and language filters are applied after the query
+  // since they require joins that aren't supported in the main query structure
   
   return filteredQuery
+}
+
+/**
+ * Apply filters after query execution (for complex joins)
+ */
+function applyPostQueryFilters(results: SearchResult[], filters: SearchFilters): SearchResult[] {
+  let filteredResults = results
+  
+  // Sentiment filter
+  if (filters.sentiment && filters.sentiment.length > 0) {
+    filteredResults = filteredResults.filter(result => 
+      result.sentiment && filters.sentiment!.includes(result.sentiment)
+    )
+  }
+  
+  // Outcome filter
+  if (filters.outcome && filters.outcome.length > 0) {
+    filteredResults = filteredResults.filter(result => 
+      result.outcome && filters.outcome!.includes(result.outcome)
+    )
+  }
+  
+  // Language filter
+  if (filters.language && filters.language.length > 0) {
+    filteredResults = filteredResults.filter(result => 
+      result.language && filters.language!.includes(result.language)
+    )
+  }
+  
+  return filteredResults
 }
 
 // ============================================

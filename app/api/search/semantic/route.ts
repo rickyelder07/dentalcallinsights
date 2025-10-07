@@ -65,6 +65,31 @@ export async function POST(req: NextRequest) {
       )
     }
     
+    // Debug: Check if user has any embeddings
+    const { data: userEmbeddings, error: embeddingsError } = await supabase
+      .from('embeddings')
+      .select('call_id')
+      .eq('user_id', user.id)
+      .limit(1)
+    
+    if (embeddingsError) {
+      console.error('Error checking user embeddings:', embeddingsError)
+    }
+    
+    if (!userEmbeddings || userEmbeddings.length === 0) {
+      return NextResponse.json({
+        success: true,
+        query,
+        results: [],
+        totalResults: 0,
+        searchTime: Date.now() - startTime,
+        debug: {
+          message: 'No embeddings found for user. Generate embeddings for your calls first.',
+          userHasEmbeddings: false,
+        }
+      })
+    }
+    
     // Perform hybrid search (vector + keyword)
     const searchResult = await hybridSearch(
       embeddingResult.embedding,
