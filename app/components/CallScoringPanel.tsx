@@ -43,6 +43,12 @@ export default function CallScoringPanel({
 
   const [activeCategory, setActiveCategory] = useState<string>('starting_call')
   const [showTranscript, setShowTranscript] = useState(true)
+  
+  // AI Scoring State
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [aiConfidence, setAiConfidence] = useState<number | null>(null)
+  const [aiReasoning, setAiReasoning] = useState<string | null>(null)
+  const [showAIInfo, setShowAIInfo] = useState(false)
 
   useEffect(() => {
     loadExistingScore()
@@ -169,6 +175,54 @@ export default function CallScoringPanel({
     }
   }
 
+  const handleGenerateAIScore = async () => {
+    try {
+      setIsGeneratingAI(true)
+      setError(null)
+      setSuccessMessage(null)
+      setAiConfidence(null)
+      setAiReasoning(null)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Not authenticated')
+        return
+      }
+
+      const response = await fetch('/api/qa/ai-score', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          call_id: call.id
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        setError(result.error || 'Failed to generate AI suggestions')
+        return
+      }
+
+      // Populate form with AI suggestions
+      setCriteria(result.suggestions)
+      setAiConfidence(result.confidence)
+      setAiReasoning(result.reasoning)
+      setShowAIInfo(true)
+
+      setSuccessMessage(`AI scoring complete! Confidence: ${result.confidence}%. Please review and adjust as needed.`)
+
+    } catch (error) {
+      console.error('Error generating AI score:', error)
+      setError('Failed to generate AI scoring suggestions')
+    } finally {
+      setIsGeneratingAI(false)
+    }
+  }
+
   const totalScore = calculateTotalScore(criteria)
   const categoryScores = calculateScoreBreakdown(criteria)
 
@@ -268,36 +322,103 @@ export default function CallScoringPanel({
 
                 {/* Right Column: Scoring Form */}
                 <div className="lg:col-span-2">
-                  {/* Metadata Form */}
-                  <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Agent Name (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={agentName}
-                          onChange={(e) => setAgentName(e.target.value)}
-                          placeholder="Enter agent name..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+            {/* AI Scoring Button */}
+            <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-purple-900 mb-1 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    AI-Powered Scoring
+                  </h3>
+                  <p className="text-xs text-purple-700">
+                    Let AI analyze the transcript and suggest scores for all criteria. You can review and adjust before saving.
+                  </p>
+                </div>
+                <button
+                  onClick={handleGenerateAIScore}
+                  disabled={isGeneratingAI || isSaving}
+                  className="ml-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                >
+                  {isGeneratingAI ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Generate AI Score
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* AI Info Display */}
+              {showAIInfo && aiConfidence !== null && (
+                <div className="mt-4 pt-4 border-t border-purple-200">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold text-purple-900">AI Confidence:</span>
+                        <span className={`px-2 py-1 text-xs font-bold rounded ${
+                          aiConfidence >= 80 ? 'bg-green-100 text-green-800' :
+                          aiConfidence >= 60 ? 'bg-blue-100 text-blue-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {aiConfidence}%
+                        </span>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Review Status
-                        </label>
-                        <select
-                          value={reviewStatus}
-                          onChange={(e) => setReviewStatus(e.target.value as 'draft' | 'completed')}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="draft">Draft</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                      </div>
+                      {aiReasoning && (
+                        <p className="text-xs text-purple-700 italic">{aiReasoning}</p>
+                      )}
                     </div>
+                    <button
+                      onClick={() => setShowAIInfo(false)}
+                      className="text-purple-600 hover:text-purple-800"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Metadata Form */}
+            <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Agent Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="Enter agent name..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Review Status
+                  </label>
+                  <select
+                    value={reviewStatus}
+                    onChange={(e) => setReviewStatus(e.target.value as 'draft' | 'completed')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
                   {/* Score Summary */}
                   <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
