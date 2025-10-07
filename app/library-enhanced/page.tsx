@@ -13,6 +13,7 @@ import CallCard from '../components/CallCard'
 import CallList from '../components/CallList'
 import BulkActions from '../components/BulkActions'
 import ExportModal from '../components/ExportModal'
+import CallScoringPanel from '../components/CallScoringPanel'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { FilterConfig } from '@/types/filters'
@@ -22,6 +23,7 @@ interface CallWithTranscript extends Call {
   transcript?: Transcript | null
   insights?: any
   hasEmbeddings?: boolean
+  qaScore?: any
 }
 
 export default function EnhancedLibraryPage() {
@@ -42,8 +44,17 @@ export default function EnhancedLibraryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sentimentFilter, setSentimentFilter] = useState<string>('all')
   
+  // Additional filter states
+  const [dateRangeStart, setDateRangeStart] = useState<string>('')
+  const [dateRangeEnd, setDateRangeEnd] = useState<string>('')
+  const [durationMin, setDurationMin] = useState<string>('')
+  const [durationMax, setDurationMax] = useState<string>('')
+  const [directionFilter, setDirectionFilter] = useState<string>('all')
+  const [sourceNumberFilter, setSourceNumberFilter] = useState<string>('')
+  
   // Modal state
   const [showExportModal, setShowExportModal] = useState(false)
+  const [scoringCall, setScoringCall] = useState<CallWithTranscript | null>(null)
   
   // Bulk operation progress
   const [isProcessing, setIsProcessing] = useState(false)
@@ -54,7 +65,7 @@ export default function EnhancedLibraryPage() {
 
   useEffect(() => {
     applyAllFilters()
-  }, [calls, filters, searchQuery, statusFilter, sentimentFilter])
+  }, [calls, filters, searchQuery, statusFilter, sentimentFilter, dateRangeStart, dateRangeEnd, durationMin, durationMax, directionFilter, sourceNumberFilter])
 
   const fetchCalls = async () => {
     try {
@@ -70,13 +81,14 @@ export default function EnhancedLibraryPage() {
         return
       }
 
-      // Fetch calls with related data
+      // Fetch calls with related data including QA scores
       const { data: callsData, error: fetchError } = await supabase
         .from('calls')
         .select(`
           *,
           transcript:transcripts(*),
-          insights:insights(*)
+          insights:insights(*),
+          qaScore:call_scores(*)
         `)
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
@@ -107,6 +119,7 @@ export default function EnhancedLibraryPage() {
         transcript: call.transcript || null,
         insights: call.insights || null,
         hasEmbeddings: callIdToHasEmbeddings.has(call.id),
+        qaScore: Array.isArray(call.qaScore) && call.qaScore.length > 0 ? call.qaScore[0] : null,
       }))
 
       setCalls(transformedCalls)
@@ -144,6 +157,52 @@ export default function EnhancedLibraryPage() {
       })
     }
 
+    // Apply date range filter
+    if (dateRangeStart) {
+      filtered = filtered.filter((call) => {
+        if (!call.call_time) return false
+        return new Date(call.call_time) >= new Date(dateRangeStart)
+      })
+    }
+    if (dateRangeEnd) {
+      filtered = filtered.filter((call) => {
+        if (!call.call_time) return false
+        const endDate = new Date(dateRangeEnd)
+        endDate.setHours(23, 59, 59, 999) // Include entire end date
+        return new Date(call.call_time) <= endDate
+      })
+    }
+
+    // Apply duration filter
+    if (durationMin) {
+      const minSeconds = parseInt(durationMin) // Duration is now in seconds
+      filtered = filtered.filter((call) => {
+        return (call.call_duration_seconds || 0) >= minSeconds
+      })
+    }
+    if (durationMax) {
+      const maxSeconds = parseInt(durationMax) // Duration is now in seconds
+      filtered = filtered.filter((call) => {
+        return (call.call_duration_seconds || 0) <= maxSeconds
+      })
+    }
+
+    // Apply direction filter
+    if (directionFilter !== 'all') {
+      filtered = filtered.filter((call) => {
+        return call.call_direction === directionFilter
+      })
+    }
+
+
+    // Apply source number filter
+    if (sourceNumberFilter) {
+      const query = sourceNumberFilter.toLowerCase()
+      filtered = filtered.filter((call) => {
+        return call.source_number?.toLowerCase().includes(query)
+      })
+    }
+
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -151,7 +210,8 @@ export default function EnhancedLibraryPage() {
         return (
           call.filename?.toLowerCase().includes(query) ||
           call.source_number?.toLowerCase().includes(query) ||
-          call.destination_number?.toLowerCase().includes(query)
+          call.destination_number?.toLowerCase().includes(query) ||
+          call.disposition?.toLowerCase().includes(query)
         )
       })
     }
@@ -320,6 +380,24 @@ export default function EnhancedLibraryPage() {
     setShowExportModal(true)
   }
 
+  const handleOpenScoring = (call: CallWithTranscript) => {
+    // Only allow scoring for calls with transcripts
+    if (!call.transcript || call.transcript.transcription_status !== 'completed') {
+      alert('This call must have a completed transcript before it can be scored')
+      return
+    }
+    setScoringCall(call)
+  }
+
+  const handleCloseScoring = () => {
+    setScoringCall(null)
+  }
+
+  const handleScoringSaved = () => {
+    // Reload calls to get updated QA scores
+    fetchCalls()
+  }
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -363,15 +441,26 @@ export default function EnhancedLibraryPage() {
               Manage, filter, and analyze your call recordings
             </p>
           </div>
-          <button
-            onClick={() => router.push('/analytics')}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Analytics Dashboard
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/qa')}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              QA Dashboard
+            </button>
+            <button
+              onClick={() => router.push('/analytics')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Analytics
+            </button>
+          </div>
         </div>
       </div>
 
@@ -383,7 +472,7 @@ export default function EnhancedLibraryPage() {
       )}
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-gray-900">{calls.length}</div>
           <div className="text-sm text-gray-600">Total Calls</div>
@@ -401,6 +490,12 @@ export default function EnhancedLibraryPage() {
           <div className="text-sm text-gray-600">With Insights</div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="text-2xl font-bold text-orange-600">
+            {calls.filter((c) => c.qaScore).length}
+          </div>
+          <div className="text-sm text-gray-600">QA Scored</div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-600">
             {filteredCalls.length}
           </div>
@@ -409,39 +504,143 @@ export default function EnhancedLibraryPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+      <div className="mb-6 bg-white border border-gray-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Advanced Filters</h3>
+        
+        {/* Search */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by filename, phone numbers, or disposition..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* Row 1: Date Range */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date Range - Start</label>
             <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search calls..."
+              type="date"
+              value={dateRangeStart}
+              onChange={(e) => setDateRangeStart(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date Range - End</label>
+            <input
+              type="date"
+              value={dateRangeEnd}
+              onChange={(e) => setDateRangeEnd(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Duration Range */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Duration - Min (seconds)</label>
+            <input
+              type="number"
+              value={durationMin}
+              onChange={(e) => setDurationMin(e.target.value)}
+              placeholder="e.g., 120"
+              min="0"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Duration - Max (seconds)</label>
+            <input
+              type="number"
+              value={durationMax}
+              onChange={(e) => setDurationMax(e.target.value)}
+              placeholder="e.g., 600"
+              min="0"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Row 3: Dropdown Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="transcribed">Transcribed</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Sentiment</label>
+            <select
+              value={sentimentFilter}
+              onChange={(e) => setSentimentFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Sentiment</option>
+              <option value="positive">Positive</option>
+              <option value="negative">Negative</option>
+              <option value="neutral">Neutral</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Direction</label>
+            <select
+              value={directionFilter}
+              onChange={(e) => setDirectionFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Direction</option>
+              <option value="Inbound">Inbound</option>
+              <option value="Outbound">Outbound</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Row 4: Source Number */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Source Number</label>
+          <input
+            type="text"
+            value={sourceNumberFilter}
+            onChange={(e) => setSourceNumberFilter(e.target.value)}
+            placeholder="Enter source phone number..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* Clear Filters Button */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => {
+              setSearchQuery('')
+              setStatusFilter('all')
+              setSentimentFilter('all')
+              setDateRangeStart('')
+              setDateRangeEnd('')
+              setDurationMin('')
+              setDurationMax('')
+              setDirectionFilter('all')
+              setSourceNumberFilter('')
+            }}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <option value="all">All Status</option>
-            <option value="transcribed">Transcribed</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="failed">Failed</option>
-          </select>
-          <select
-            value={sentimentFilter}
-            onChange={(e) => setSentimentFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Sentiment</option>
-            <option value="positive">Positive</option>
-            <option value="negative">Negative</option>
-            <option value="neutral">Neutral</option>
-            <option value="mixed">Mixed</option>
-          </select>
+            Clear All Filters
+          </button>
         </div>
       </div>
 
@@ -456,19 +655,97 @@ export default function EnhancedLibraryPage() {
         onExport={handleExport}
       />
 
-      {/* Call List */}
+      {/* Call List with QA Score Button */}
       <div className="mt-6">
-        <CallList
-          calls={filteredCalls}
-          selectedCalls={selectedCalls}
-          onSelectCall={toggleCallSelection}
-          onSelectAll={toggleSelectAll}
-          showCheckboxes={true}
-          loading={isLoading}
-          emptyMessage="No calls match your filters"
-          pageSize={20}
-          infiniteScroll={false}
-        />
+        <div className="space-y-4">
+          {filteredCalls.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <p className="text-gray-600">No calls match your filters</p>
+            </div>
+          ) : (
+            filteredCalls.map((call) => (
+              <div key={call.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-3">
+                  {/* Checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={selectedCalls.has(call.id)}
+                    onChange={() => toggleCallSelection(call.id)}
+                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                  />
+
+                  {/* Call Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <button
+                          onClick={() => router.push(`/calls/${call.id}`)}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block"
+                        >
+                          {call.filename}
+                        </button>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {call.call_time && new Date(call.call_time).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      {call.call_direction && (
+                        <span className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                          {call.call_direction}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Status badges */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {call.transcript?.transcription_status === 'completed' && (
+                        <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
+                          ✓ Transcribed
+                        </span>
+                      )}
+                      {call.insights && (
+                        <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
+                          🤖 AI Insights
+                        </span>
+                      )}
+                      {call.qaScore && (
+                        <span className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">
+                          ⭐ QA Score: {call.qaScore.total_score}/100
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => router.push(`/calls/${call.id}`)}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        View Details →
+                      </button>
+                      {call.transcript?.transcription_status === 'completed' && (
+                        <button
+                          onClick={() => handleOpenScoring(call)}
+                          className="text-sm text-green-600 hover:text-green-800 font-medium flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {call.qaScore ? 'Update QA Score' : 'Score Call'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Export Modal */}
@@ -478,6 +755,15 @@ export default function EnhancedLibraryPage() {
         selectedCallIds={Array.from(selectedCalls)}
         totalCalls={calls.length}
       />
+
+      {/* QA Scoring Panel */}
+      {scoringCall && (
+        <CallScoringPanel
+          call={scoringCall}
+          onClose={handleCloseScoring}
+          onSaved={handleScoringSaved}
+        />
+      )}
     </div>
   )
 }

@@ -1,0 +1,47 @@
+﻿Procedures,Weight,Definition,"Applicable on all calls (Yes, No) If no, when is this item scored?"
+Starting The Call Right,,,
+"Did the agent introduce themselves properly?
+",10,"Did the agent introduce themselves properly?
+Inbound: ""Thank you for calling Sola Kids Dental, my name is [Name], how can I help you""?
+Outbound: ""Hello this is [Name] from Sola Kids Dental, am I speaking to [patient/ the parents of...])",Yes
+Did the agent quickly verify that they were speaking to either the patient or the parent of the patient?,10,"Did the agent quickly verify that they were speaking to either the patient or the parent of the patient?
+Outbound: ""Am I speaking with [    ]?""
+Inbound: ""Can I have the patient's date of birth…""",Yes
+Did the Agent clarify reason for the call.,10,"Did the Agent clarify reason for the call?
+Inbound: Did the agent properly identify the caller’s needs on the first try?
+Outbound: immediately and clearly articulate for the reason for the call",Yes
+,,,
+Upselling & Closing,,,
+Next 2 day appointment?,10,"Did the agent suggest a date today, tomorrow, or the day after tomorrow?","No, only on general appointment scheduling calls - not on confirmations, inquiries, or calls related to specialty dental services (i.e., Oral Surgery, Endo, Ortho)"
+Specific Appointment Time,5,"Did the agent suggest a specific appointment time?
+(e.g., ""the doctor has availability tomorrow at 12:00p or 2:00p"" NOT ""what time do you want tomorrow?"")","No, not on inquiries that are not related to appointment setting (but it is relevant on almost every call)"
+Offer to schedule family members?,5,"Did the agent identify any family members with upcoming appointments or broken appointments and offer to schedule? 
+Example phrases are ""I see [   ]'s brother is also overdue for a cleaning, would you like to bring him in too?"" or ""Are there any other family members you'd like to bring to this appointment or schedule for another day?""",Yes
+Confirm appointment?,5,"Did the agent clearly confirm the date and location?
+Proper structure is: ""Day of Week, Day of month at our [Location] office"".
+(E.g., ""Tuesday the 14th at our Main location"")","No, not on inquiries that are not related to appointment setting (but it is relevant on almost every call)"
+,,,
+Handling Rebuttals,,,
+Rebuttal 1,5,"Did the agent address first rebuttal to scheduling the appointment?
+[Not sure if you guys have a good way of measuring this?]
+Typical rebuttal are 'need to talk to other parent', 'child is in school', 'too busy', 'need to figure out insurance', 'to expensive' etc.","No, only on appointment scheduling calls - i.e., not on confirmations or inquiries | And only if there is a rebuttal"
+Rebuttal 2,5,same as above but for second rebuttal,"No, only on appointment scheduling calls - i.e., not on confirmations or inquiries | And only if there is a rebuttal"
+,,,
+Qualitative Assessments,,,
+Agent empathy,5,"Did the agent demonstrate empathy?
+Did the agent ask if the patient was experiencing any discomfort?",Yes
+Agent positivity,5,"Was the agent friendly, upbeat, and confident throughout the call?
+[Not sure if you guys have a good way of measuring this?]",Yes
+Caller confusion,5,"Did the caller have confusion?
+[Not sure if you guys have a good way of measuring this?]
+Were there any moments in which the patient was confused because the agent did not speak clearly, did not speak correctly, or was accidentally on mute?",Yes
+Caller frustration,5,"Did the caller have frustration?
+[Not sure if you guys have a good way of measuring this?]",Yes
+Questions answered,5,"Were there any questions that the agent was unable to answer?
+[Not sure if you guys have a good way of measuring this?]",Yes
+Long pauses,5,"Were there any long pauses?
+Longer than 5 seconds without a preface or longer than 15 seconds even with a preface.",Yes
+CSAT,5,"What was the caller's estimated CSAT?
+[Not sure if you guys have a good way of measuring this?]",Yes
+,,,
+Total,100,,
