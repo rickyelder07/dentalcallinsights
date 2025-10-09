@@ -371,10 +371,10 @@ export class SimplifiedCsvParser {
           source_extension: values[sourceExtIdx]?.trim() || undefined,
           destination_number: values[destNumberIdx]?.trim() || undefined,
           destination_extension: values[destExtIdx]?.trim() || undefined,
-          duration_seconds: durationSeconds,
+          duration_seconds: durationSeconds || undefined,
           disposition: values[dispositionIdx]?.trim() || undefined,
           call_flow: values[callFlowIdx]?.trim() || undefined,
-          time_to_answer_seconds: timeToAnswerSeconds,
+          time_to_answer_seconds: timeToAnswerSeconds || undefined,
           filename: finalFilename,
         }
 

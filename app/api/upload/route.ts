@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
         // Upload file to Supabase Storage with retry logic
         const storagePath = `${user.id}/${file.name}`
         let uploadSuccess = false
-        let lastError = null
+        let lastError: Error | null = null
 
         // Retry up to 3 times for network errors
         for (let attempt = 1; attempt <= 3; attempt++) {
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
               break
             }
           } catch (networkError) {
-            lastError = networkError
+            lastError = networkError as Error
             if (attempt < 3) {
               // Wait before retry
               await new Promise(resolve => setTimeout(resolve, attempt * 1000))

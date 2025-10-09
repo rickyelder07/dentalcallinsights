@@ -68,7 +68,7 @@ export function validateAudioFile(file: File): AudioValidationResult {
   const isValidMimeType = Object.keys(SUPPORTED_FORMATS).includes(mimeType)
   const isValidExtension = Object.values(SUPPORTED_FORMATS)
     .flat()
-    .includes(fileExtension)
+    .includes(fileExtension as any)
 
   if (!isValidMimeType && !isValidExtension) {
     errors.push(
@@ -134,7 +134,7 @@ export function getMimeTypeFromExtension(filename: string): string {
   const ext = getFileExtension(filename)
 
   for (const [mimeType, extensions] of Object.entries(SUPPORTED_FORMATS)) {
-    if (extensions.includes(ext as any)) {
+    if ((extensions as readonly string[]).includes(ext)) {
       return mimeType
     }
   }

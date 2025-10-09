@@ -38,10 +38,10 @@ export async function uploadAudioFile(
     // Update progress: validating
     onProgress?.({
       uploadId,
-      fileName: file.name,
+      filename: file.name,
       fileSize: file.size,
       bytesUploaded: 0,
-      percentage: 0,
+      progress: 0,
       status: 'validating',
       startTime: Date.now(),
     });
@@ -52,10 +52,10 @@ export async function uploadAudioFile(
     // Update progress: uploading
     onProgress?.({
       uploadId,
-      fileName: file.name,
+      filename: file.name,
       fileSize: file.size,
       bytesUploaded: 0,
-      percentage: 0,
+      progress: 0,
       status: 'uploading',
       startTime: Date.now(),
     });
@@ -64,8 +64,8 @@ export async function uploadAudioFile(
     const uploadResult = await uploadFileWithProgress(file, storagePath, (percentage) => {
       const bytesUploaded = Math.floor((file.size * percentage) / 100);
       onProgress?.({
-        uploadId,
-        fileName: file.name,
+        progress: 0,
+        filename: file.name,
         fileSize: file.size,
         bytesUploaded,
         percentage,
@@ -74,7 +74,7 @@ export async function uploadAudioFile(
       });
     });
 
-    if (!uploadResult.success) {
+    if (uploadResult.error) {
       return {
         success: false,
         error: uploadResult.error || 'Failed to upload file',
@@ -84,10 +84,11 @@ export async function uploadAudioFile(
     // Update progress: processing
     onProgress?.({
       uploadId,
-      fileName: file.name,
+      filename: file.name,
       fileSize: file.size,
       bytesUploaded: file.size,
       percentage: 100,
+      progress: 100,
       status: 'processing',
       startTime: Date.now(),
     });

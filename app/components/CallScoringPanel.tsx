@@ -300,7 +300,6 @@ export default function CallScoringPanel({
                         {call.transcript ? (
                           <TranscriptViewer
                             transcript={call.transcript}
-                            maxHeight="600px"
                           />
                         ) : (
                           <div className="p-6 text-center text-gray-500">

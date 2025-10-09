@@ -7,7 +7,7 @@
 
 import React, { useState, useRef } from 'react';
 import { validateCsvFile, formatFileSize } from '@/lib/file-validation';
-import { CsvParser } from '@/lib/csv-parser';
+import { SimplifiedCsvParser } from '@/lib/csv-parser-simplified';
 import type { FileValidationResult } from '@/types/upload';
 import type { CsvValidationResult } from '@/types/csv';
 
@@ -39,7 +39,7 @@ export default function CsvUploader({ onCsvParsed, disabled = false }: CsvUpload
     try {
       // Read and parse CSV
       const csvContent = await file.text();
-      const csvValidationResult = CsvParser.parseCsvFile(csvContent);
+      const csvValidationResult = SimplifiedCsvParser.parseCSV(csvContent);
       setCsvValidation(csvValidationResult);
 
       if (csvValidationResult.valid || csvValidationResult.errors.length === 0) {
@@ -49,6 +49,7 @@ export default function CsvUploader({ onCsvParsed, disabled = false }: CsvUpload
       console.error('CSV parsing error:', error);
       setCsvValidation({
         valid: false,
+        rows: [],
         errors: [
           {
             row: 0,
@@ -58,6 +59,8 @@ export default function CsvUploader({ onCsvParsed, disabled = false }: CsvUpload
           },
         ],
         warnings: [],
+        rowCount: 0,
+        audioFilenames: [],
       });
     } finally {
       setIsProcessing(false);

@@ -61,9 +61,9 @@ export default function UploadProgressComponent({
       <div className="flex items-center justify-between mb-2">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">
-            {progress.fileName}
+            {progress.filename}
           </p>
-          <p className="text-xs text-gray-500">{formatFileSize(progress.fileSize)}</p>
+          <p className="text-xs text-gray-500">{formatFileSize(progress.fileSize || 0)}</p>
         </div>
         <div className="ml-4 flex items-center">
           <span
@@ -87,14 +87,14 @@ export default function UploadProgressComponent({
             className={`h-2 rounded-full transition-all duration-300 ${getStatusColor(
               progress.status
             )}`}
-            style={{ width: `${progress.percentage}%` }}
+            style={{ width: `${progress.percentage || 0}%` }}
           />
         </div>
       </div>
 
       {/* Progress details */}
       <div className="flex items-center justify-between text-xs text-gray-600">
-        <span>{Math.round(progress.percentage)}%</span>
+        <span>{Math.round(progress.percentage || 0)}%</span>
         {showDetails && progress.uploadSpeed && progress.estimatedTimeRemaining && (
           <div className="flex items-center gap-3">
             <span>{formatUploadSpeed(progress.uploadSpeed)}</span>

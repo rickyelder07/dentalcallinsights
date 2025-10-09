@@ -269,14 +269,14 @@ function applyPostQueryFilters(results: SearchResult[], filters: SearchFilters):
   // Sentiment filter
   if (filters.sentiment && filters.sentiment.length > 0) {
     filteredResults = filteredResults.filter(result => 
-      result.sentiment && filters.sentiment!.includes(result.sentiment)
+      result.sentiment && filters.sentiment!.includes(result.sentiment as any)
     )
   }
   
   // Outcome filter
   if (filters.outcome && filters.outcome.length > 0) {
     filteredResults = filteredResults.filter(result => 
-      result.outcome && filters.outcome!.includes(result.outcome)
+      result.outcome && filters.outcome!.includes(result.outcome as any)
     )
   }
   

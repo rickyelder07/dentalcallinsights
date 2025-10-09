@@ -6,7 +6,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import type { AudioPlayerState, PlaybackRate, PLAYBACK_RATES } from '@/types/audio'
+import type { AudioPlayerState, PlaybackRate } from '@/types/audio'
+
+const PLAYBACK_RATES: PlaybackRate[] = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
 interface AudioPlayerProps {
   src: string
@@ -15,8 +17,6 @@ interface AudioPlayerProps {
   className?: string
   timestamps?: Array<{ start: number; end: number; text: string }>
 }
-
-const PLAYBACK_RATES: ReadonlyArray<PlaybackRate> = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
 export default function AudioPlayer({
   src,
@@ -88,7 +88,7 @@ export default function AudioPlayer({
   // Change playback rate
   const changePlaybackRate = useCallback(() => {
     if (audioRef.current) {
-      const currentIndex = PLAYBACK_RATES.indexOf(playerState.playbackRate)
+      const currentIndex = PLAYBACK_RATES.indexOf(playerState.playbackRate as PlaybackRate)
       const nextIndex = (currentIndex + 1) % PLAYBACK_RATES.length
       const newRate = PLAYBACK_RATES[nextIndex]
       audioRef.current.playbackRate = newRate

@@ -305,3 +305,36 @@ export async function fileExists(
     }
   }
 }
+
+/**
+ * Upload file with progress tracking
+ */
+export async function uploadFileWithProgress(
+  file: File,
+  storagePath: string,
+  onProgress?: (percentage: number) => void
+): Promise<{ data: any; error: any }> {
+  const supabase = createBrowserClient()
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    // Simulate progress for now (Supabase doesn't provide real progress)
+    if (onProgress) {
+      onProgress(100)
+    }
+
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error }
+  }
+}

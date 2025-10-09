@@ -69,7 +69,7 @@ export function validateAudioFile(file: File): FileValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings: warnings.length > 0 ? warnings : undefined,
+    warnings: warnings.length > 0 ? warnings : [],
   };
 }
 
@@ -111,7 +111,7 @@ export function validateCsvFile(file: File): FileValidationResult {
   return {
     valid: errors.length === 0,
     errors,
-    warnings: warnings.length > 0 ? warnings : undefined,
+    warnings: warnings.length > 0 ? warnings : [],
   };
 }
 

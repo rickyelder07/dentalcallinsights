@@ -138,7 +138,90 @@ export interface AudioFilesValidationResult {
 export interface UploadProgress {
   filename: string
   progress: number // 0-100
-  status: 'pending' | 'uploading' | 'completed' | 'error'
+  status: 'pending' | 'uploading' | 'completed' | 'error' | 'validating' | 'processing'
+  error?: string
+  uploadId?: string
+  percentage?: number
+  fileSize?: number
+  uploadSpeed?: number
+  estimatedTimeRemaining?: number
+  bytesUploaded?: number
+  startTime?: number
+}
+
+/**
+ * File validation result
+ */
+export interface FileValidationResult {
+  valid: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+/**
+ * Call metadata interface
+ */
+export interface CallMetadata {
+  patientId?: string
+  tags?: string[]
+  notes?: string
+  priority?: 'low' | 'medium' | 'high'
+  [key: string]: any
+}
+
+/**
+ * Call with transcript data
+ */
+export interface CallWithTranscript {
+  id: string
+  user_id: string
+  filename: string
+  call_time?: string
+  call_direction?: string
+  source_number?: string
+  destination_number?: string
+  call_duration_seconds?: number
+  disposition?: string
+  metadata?: CallMetadata
+  created_at: string
+  updated_at: string
+  transcript?: {
+    id: string
+    content: string
+    transcription_status: string
+    confidence_score?: number
+  }
+  insights?: {
+    id: string
+    overall_sentiment?: string
+    key_points?: string[]
+    action_items?: string[]
+    red_flags?: string[]
+  }
+  qaScore?: any
+}
+
+/**
+ * Upload status enum
+ */
+export type UploadStatus = 'idle' | 'pending' | 'uploading' | 'completed' | 'error' | 'validating' | 'processing'
+
+/**
+ * Audio upload request
+ */
+export interface AudioUploadRequest {
+  file: File
+  userId: string
+  metadata?: CallMetadata
+}
+
+/**
+ * Audio upload response
+ */
+export interface AudioUploadResponse {
+  success: boolean
+  callId?: string
+  storagePath?: string
   error?: string
 }
 
