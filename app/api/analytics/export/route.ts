@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setHours(expiresAt.getHours() + 24) // Expire after 24 hours
 
-    const { data: exportRecord, error: exportError } = await supabase
+    const { data: _exportRecord, error: exportError } = await supabase
       .from('export_history')
       .insert({
         user_id: user.id,

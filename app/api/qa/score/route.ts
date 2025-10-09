@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAPIClient } from '@/lib/supabase-server'
-import type { ScoreSubmissionRequest, ScoreUpdateRequest } from '@/types/qa'
+import type { ScoreSubmissionRequest, ScoreUpdateRequest as _ScoreUpdateRequest } from '@/types/qa'
 
 export async function POST(request: NextRequest) {
   try {

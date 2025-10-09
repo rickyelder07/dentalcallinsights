@@ -15,7 +15,7 @@ import type {
   SentimentAnalytics,
   PerformanceMetrics,
 } from '@/types/analytics'
-import type { CallWithTranscript } from '@/types/upload'
+import type { CallWithTranscript as _CallWithTranscript } from '@/types/upload'
 
 export default function AnalyticsPage() {
   const router = useRouter()
