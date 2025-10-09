@@ -15,8 +15,7 @@ import type {
   SentimentAnalytics,
   PerformanceMetrics,
 } from '@/types/analytics'
-import type { Call } from '@/types/upload'
-import type { Transcript } from '@/types/transcript'
+import type { CallWithTranscript } from '@/types/upload'
 
 export default function AnalyticsPage() {
   const router = useRouter()
@@ -328,7 +327,7 @@ export default function AnalyticsPage() {
       }
     })
 
-    const totalCalls = calls.length
+    const _totalCalls = calls.length
     const totalWithSentiment = Object.values(sentimentCounts).reduce((sum, count) => sum + count, 0)
     
     const distribution = Object.entries(sentimentCounts).map(([sentiment, count]) => ({
@@ -966,7 +965,7 @@ export default function AnalyticsPage() {
             {/* Simple trend visualization */}
             <div className="space-y-2">
               <div className="text-sm font-medium text-gray-700">Recent Activity</div>
-              {trends.dataPoints.slice(-10).map((point, index) => (
+              {trends.dataPoints.slice(-10).map((point, _index) => (
                 <div key={point.date} className="flex items-center gap-2 text-sm">
                   <span className="text-gray-600 w-24">{new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   <div className="flex-1 bg-gray-200 rounded-full h-2">

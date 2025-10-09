@@ -71,6 +71,7 @@ Transform dental call recordings into actionable insights with AI-powered transc
 - **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup instructions for new users
 - **[CODE_STRUCTURE.md](CODE_STRUCTURE.md)** - Technical architecture and codebase guide
 - **[FEATURE_GUIDE.md](FEATURE_GUIDE.md)** - Comprehensive user feature documentation
+- **[VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)** - Complete Vercel deployment guide
 
 ### 🗄️ Database Setup
 - **[migrations/01_core_schema.sql](migrations/01_core_schema.sql)** - Core database schema
@@ -131,6 +132,20 @@ Transform dental call recordings into actionable insights with AI-powered transc
 ├── env.example.txt       # Environment template
 └── README.md             # This file
 ```
+
+## 🚀 Quick Deployment
+
+### Deploy to Vercel (Recommended)
+```bash
+# Quick deployment using the provided script
+./deploy.sh
+
+# Or deploy manually
+npm install -g vercel
+vercel --prod
+```
+
+For detailed deployment instructions, see [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)
 
 ## 🚦 Getting Started
 

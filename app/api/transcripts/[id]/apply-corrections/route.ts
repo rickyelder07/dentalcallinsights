@@ -7,14 +7,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-server'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerClient()
+    const supabase = createAdminClient()
 
     // Get user session
     const {

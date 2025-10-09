@@ -96,6 +96,13 @@ export const SUPPORTED_AUDIO_FORMATS = [
 
 export const SUPPORTED_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.aac'] as const
 
+// File size limits
+export const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
+export const MIN_FILE_SIZE = 1024 // 1KB
+
+// File extensions for validation
+export const SUPPORTED_FILE_EXTENSIONS = SUPPORTED_AUDIO_EXTENSIONS
+
 /**
  * Audio file validation result
  */

@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { SimplifiedCsvParser } from '@/lib/csv-parser-simplified'
-import type { CsvCallRow, UploadResult } from '@/types/upload'
+import type { UploadResult } from '@/types/upload'
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/aac']

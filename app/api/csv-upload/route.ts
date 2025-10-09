@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
-import { CsvParser } from '@/lib/csv-parser';
+import { SimplifiedCsvParser } from '@/lib/csv-parser-simplified';
 import { validateCsvFile } from '@/lib/file-validation';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const csvContent = await file.text();
 
     // Parse and validate CSV
-    const csvValidation = CsvParser.parseCsvFile(csvContent);
+    const csvValidation = SimplifiedCsvParser.parseCSV(csvContent);
     if (!csvValidation.valid) {
       return NextResponse.json(
         {
@@ -63,8 +63,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse CSV to call data
-    const callDataArray = CsvParser.parseCsvToCallData(csvContent, user.id);
+    // Convert CSV rows to call data format
+    const callDataArray = csvValidation.rows.map(row => ({
+      user_id: user.id,
+      filename: row.filename,
+      call_time: row.call_time,
+      call_direction: row.direction.toLowerCase(),
+      source_number: row.source_number,
+      destination_number: row.destination_number,
+      call_duration_seconds: row.duration_seconds,
+      disposition: row.disposition,
+      metadata: {
+        source_name: row.source_name,
+        source_extension: row.source_extension,
+        destination_extension: row.destination_extension,
+        call_flow: row.call_flow,
+        time_to_answer_seconds: row.time_to_answer_seconds,
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
 
     if (callDataArray.length === 0) {
       return NextResponse.json(
@@ -77,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     // Insert call data into database (batch insert)
     const { data: insertedData, error: insertError } = await supabase
-      .from('csv_call_data')
+      .from('calls')
       .insert(callDataArray)
       .select();
 
@@ -131,9 +149,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Get user's CSV call data
+    // Get user's call data
     const { data: csvData, error: dbError } = await supabase
-      .from('csv_call_data')
+      .from('calls')
       .select('*')
       .eq('user_id', user.id)
       .order('call_time', { ascending: false })
@@ -142,7 +160,7 @@ export async function GET(request: NextRequest) {
     if (dbError) {
       return NextResponse.json(
         {
-          error: 'Failed to fetch CSV data',
+          error: 'Failed to fetch call data',
           details: dbError.message,
         },
         { status: 500 }
@@ -151,7 +169,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const { count } = await supabase
-      .from('csv_call_data')
+      .from('calls')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 

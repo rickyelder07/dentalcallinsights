@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SCORING_CRITERIA_CONFIG, getAllCriteria, CATEGORY_METADATA } from '@/lib/qa-criteria'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // This endpoint can be called without authentication
     // as it just returns the static criteria definitions
