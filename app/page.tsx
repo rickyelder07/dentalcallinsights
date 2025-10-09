@@ -28,7 +28,7 @@ export default function HomePage() {
               Upload Your First Call
             </Link>
             <Link
-              href="/library"
+              href="/library-enhanced"
               className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold border-2 border-primary-600 hover:bg-primary-50 transition"
             >
               Browse Library

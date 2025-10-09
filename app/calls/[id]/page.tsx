@@ -306,7 +306,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <p className="text-red-800">{error}</p>
           <button
-            onClick={() => router.push('/library')}
+            onClick={() => router.push('/library-enhanced')}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             Back to Library
@@ -321,7 +321,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/library')}
+          onClick={() => router.push('/library-enhanced')}
           className="text-blue-600 hover:text-blue-700 mb-4 flex items-center"
         >
           <svg

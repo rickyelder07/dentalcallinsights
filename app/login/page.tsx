@@ -34,7 +34,7 @@ function LoginForm() {
 
     // Redirect if already logged in
     if (!authLoading && user) {
-      const redirectTo = searchParams.get('redirectTo') || '/library'
+      const redirectTo = searchParams.get('redirectTo') || '/library-enhanced'
       router.push(redirectTo)
     }
   }, [user, authLoading, router, searchParams])
@@ -74,7 +74,7 @@ function LoginForm() {
         setSuccess('Sign in successful! Redirecting...')
         
         // Redirect after successful login
-        const redirectTo = searchParams.get('redirectTo') || '/library'
+        const redirectTo = searchParams.get('redirectTo') || '/library-enhanced'
         setTimeout(() => {
           router.push(redirectTo)
           router.refresh()

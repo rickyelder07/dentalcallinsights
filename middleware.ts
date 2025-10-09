@@ -10,10 +10,10 @@ import type { NextRequest } from 'next/server'
 /**
  * Protected routes that require authentication
  */
-const PROTECTED_ROUTES = ['/upload', '/library', '/qa', '/profile', '/calls']
+const PROTECTED_ROUTES = ['/upload', '/library-enhanced', '/qa', '/profile', '/calls', '/analytics']
 
 /**
- * Public routes that redirect to /library if user is authenticated
+ * Public routes that redirect to /library-enhanced if user is authenticated
  */
 const AUTH_ROUTES = ['/login', '/signup']
 
@@ -83,6 +83,11 @@ export async function middleware(req: NextRequest) {
 
     const { pathname } = req.nextUrl
 
+    // Redirect old /library route to /library-enhanced
+    if (pathname === '/library' || pathname.startsWith('/library/')) {
+      return NextResponse.redirect(new URL(pathname.replace('/library', '/library-enhanced'), req.url))
+    }
+
     // Check if current route is protected
     const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
       pathname.startsWith(route)
@@ -98,9 +103,9 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // Redirect to library if accessing auth routes with active session
+    // Redirect to library-enhanced if accessing auth routes with active session
     if (isAuthRoute && session) {
-      return NextResponse.redirect(new URL('/library', req.url))
+      return NextResponse.redirect(new URL('/library-enhanced', req.url))
     }
 
     return res

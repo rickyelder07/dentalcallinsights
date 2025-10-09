@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
     // Email confirmation flow - redirect to login with success message
     return NextResponse.redirect(new URL('/login?message=email_confirmed', requestUrl.origin))
   } else {
-    // Default OAuth flow - redirect to library
-    return NextResponse.redirect(new URL('/library', requestUrl.origin))
+    // Default OAuth flow - redirect to library-enhanced
+    return NextResponse.redirect(new URL('/library-enhanced', requestUrl.origin))
   }
 }
 

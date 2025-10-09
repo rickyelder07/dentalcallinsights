@@ -58,6 +58,9 @@ export default function EnhancedLibraryPage() {
   
   // Bulk operation progress
   const [isProcessing, setIsProcessing] = useState(false)
+  
+  // UI state
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     fetchCalls()
@@ -504,8 +507,26 @@ export default function EnhancedLibraryPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Advanced Filters</h3>
+      <div className="mb-6 bg-white border border-gray-200 rounded-lg">
+        {/* Filters Header - Always Visible */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+        >
+          <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+          <svg
+            className={`w-5 h-5 text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {/* Filters Content - Collapsible */}
+        {showFilters && (
+          <div className="px-6 pb-6 border-t border-gray-200 pt-4">
         
         {/* Search */}
         <div className="mb-4">
@@ -642,6 +663,8 @@ export default function EnhancedLibraryPage() {
             Clear All Filters
           </button>
         </div>
+          </div>
+        )}
       </div>
 
       {/* Bulk Actions */}
@@ -657,6 +680,36 @@ export default function EnhancedLibraryPage() {
 
       {/* Call List with QA Score Button */}
       <div className="mt-6">
+        {/* Select All Button */}
+        {filteredCalls.length > 0 && (
+          <div className="mb-4 flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleSelectAll}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedCalls.size === filteredCalls.length && filteredCalls.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                {selectedCalls.size === filteredCalls.length && filteredCalls.length > 0 ? 'Deselect All' : 'Select All'}
+              </button>
+              <span className="text-sm text-gray-600">
+                {selectedCalls.size > 0 ? (
+                  <span className="font-medium text-blue-600">
+                    {selectedCalls.size} of {filteredCalls.length} selected
+                  </span>
+                ) : (
+                  <span>{filteredCalls.length} calls</span>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           {filteredCalls.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">

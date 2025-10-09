@@ -32,7 +32,7 @@ export default function SignUpPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/library')
+      router.push('/library-enhanced')
     }
   }, [user, authLoading, router])
 

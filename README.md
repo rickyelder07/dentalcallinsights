@@ -56,48 +56,80 @@ Transform dental call recordings into actionable insights with AI-powered transc
 - ✅ Export insights as Text or JSON
 - ✅ Manual regeneration capability
 
-### 📅 Planned (Future Milestones)
-- ⏳ Vector embeddings for semantic search
-- ⏳ Advanced call library filters
-- ⏳ QA dashboard and analytics
-- ⏳ Batch insights processing
-- ⏳ Custom insight templates
+### ✅ Completed (Milestone 8)
+- ✅ Quality Assurance scoring system with 15 criteria
+- ✅ AI-powered automated scoring using GPT-4o-mini
+- ✅ Manual scoring interface with detailed criteria
+- ✅ QA dashboard with performance metrics
+- ✅ Score trends and analytics
+- ✅ Agent performance tracking
+- ✅ Comprehensive scoring workflow
+
+## 📚 Documentation
+
+### 🚀 Getting Started
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup instructions for new users
+- **[CODE_STRUCTURE.md](CODE_STRUCTURE.md)** - Technical architecture and codebase guide
+- **[FEATURE_GUIDE.md](FEATURE_GUIDE.md)** - Comprehensive user feature documentation
+
+### 🗄️ Database Setup
+- **[migrations/01_core_schema.sql](migrations/01_core_schema.sql)** - Core database schema
+- **[migrations/02_auth_security.sql](migrations/02_auth_security.sql)** - Authentication & security setup
+- **[migrations/03_features.sql](migrations/03_features.sql)** - Core features implementation
+- **[migrations/04_qa_analytics.sql](migrations/04_qa_analytics.sql)** - QA & analytics features
+
+### 🔧 Technical Documentation
+- **[CODEFLOW.md](CODEFLOW.md)** - Architecture overview and development roadmap
+- **[TRANSCRIPTION_SETUP.md](TRANSCRIPTION_SETUP.md)** - Transcription pipeline setup
+- **[TRANSCRIPTION_CORRECTIONS_FIX.md](TRANSCRIPTION_CORRECTIONS_FIX.md)** - Transcription corrections implementation
+- **[TRANSCRIPTION_DURATION_THRESHOLD.md](TRANSCRIPTION_DURATION_THRESHOLD.md)** - Duration threshold configuration
+- **[AI_SCORING_GUIDE.md](AI_SCORING_GUIDE.md)** - AI-powered QA scoring guide
+- **[AI_SCORING_IMPLEMENTATION.md](AI_SCORING_IMPLEMENTATION.md)** - Technical AI scoring documentation
+- **[AI_SCORING_COMPLETE.md](AI_SCORING_COMPLETE.md)** - AI scoring feature summary
 
 ## 🏗️ Project Structure
 
 ```
 .
 ├── app/                    # Next.js App Router
-│   ├── auth/              # Authentication routes
-│   │   └── callback/      # OAuth/email confirmation callback
+│   ├── api/               # API endpoints
+│   │   ├── analytics/     # Analytics & reporting
+│   │   ├── insights/      # AI insights generation
+│   │   ├── qa/           # Quality assurance
+│   │   ├── search/       # Search functionality
+│   │   ├── transcribe/   # Transcription pipeline
+│   │   └── upload/       # File upload handling
 │   ├── components/        # Reusable React components
-│   │   ├── auth-error-boundary.tsx
-│   │   ├── logout-button.tsx
-│   │   ├── navigation.tsx
-│   │   └── protected-route.tsx
-│   ├── providers/         # Context providers
-│   │   └── auth-provider.tsx
-│   ├── login/             # Login page (✅ Complete)
-│   ├── signup/            # Sign up page (✅ Complete)
-│   ├── profile/           # User profile page (✅ Complete)
-│   ├── reset-password/    # Password reset flow (✅ Complete)
-│   ├── upload/            # Upload page (✅ Complete)
-│   ├── library/           # Call library page (📅 Planned)
-│   ├── qa/                # QA dashboard (📅 Planned)
-│   ├── layout.tsx         # Root layout with navigation
-│   ├── page.tsx           # Home page
-│   └── globals.css        # Global styles with Tailwind
-├── lib/
-│   ├── auth.ts            # Authentication utilities (✅ Complete)
-│   └── supabase.ts        # Supabase client configuration
-├── types/
-│   └── auth.ts            # TypeScript auth types (✅ Complete)
-├── migrations/
-│   ├── 001_init.sql       # Initial database schema
-│   └── 002_enable_rls.sql # Row Level Security policies
-├── middleware.ts          # Route protection middleware (✅ Complete)
-├── .env.example.txt       # Environment variables template
-└── README.md              # This file
+│   │   ├── CallCard.tsx
+│   │   ├── CallScoringPanel.tsx
+│   │   ├── SearchBar.tsx
+│   │   ├── InsightsPanel.tsx
+│   │   └── [20+ components]
+│   ├── library-enhanced/  # Enhanced call library
+│   ├── analytics/         # Analytics dashboard
+│   ├── qa/               # QA dashboard
+│   ├── upload/           # File upload page
+│   └── [auth-pages]/     # Authentication pages
+├── lib/                   # Core utility libraries
+│   ├── supabase.ts       # Database client
+│   ├── openai.ts         # AI service integration
+│   ├── embeddings.ts     # Vector search
+│   ├── qa-ai-scoring.ts  # AI scoring logic
+│   └── [15+ utilities]
+├── types/                 # TypeScript definitions
+│   ├── auth.ts
+│   ├── upload.ts
+│   ├── insights.ts
+│   ├── qa.ts
+│   └── [10+ type files]
+├── migrations/           # Database migrations
+│   ├── 01_core_schema.sql
+│   ├── 02_auth_security.sql
+│   ├── 03_features.sql
+│   └── 04_qa_analytics.sql
+├── middleware.ts         # Route protection
+├── env.example.txt       # Environment template
+└── README.md             # This file
 ```
 
 ## 🚦 Getting Started
@@ -229,9 +261,9 @@ Visit [http://localhost:3000](http://localhost:3000) to see your app running! �
 1. Go to http://localhost:3000/signup
 2. Create a test account with a valid email
 3. Sign in at http://localhost:3000/login
-4. Verify you can access /library, /upload, /qa, /profile
+4. Verify you can access /library-enhanced, /upload, /qa, /profile
 5. Sign out and verify redirect to login
-6. Try accessing /library while logged out → should redirect to login
+6. Try accessing /library-enhanced while logged out → should redirect to login
 
 For detailed testing instructions, see `AUTHENTICATION_SETUP.md`.
 
@@ -429,12 +461,11 @@ See `AUTHENTICATION_SETUP.md` for detailed instructions on testing Row Level Sec
 - [ ] Basic analytics dashboard
 - [ ] Export functionality
 
-### Milestone 8: QA & Compliance
+### Milestone 8:  QA & Call Scoring
 
-- [ ] QA checklist templates
-- [ ] Compliance scoring
-- [ ] Audit logs
-- [ ] Reporting
+- [ ] QA checklist template
+- [ ] call scoring
+
 
 ## 🛠️ Development Notes
 

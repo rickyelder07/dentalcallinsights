@@ -111,7 +111,7 @@ export default function UploadPage() {
           // If fully successful, redirect to library after a short delay
           if (result.success && result.callsCreated && result.callsCreated.length > 0) {
             setTimeout(() => {
-              router.push('/library')
+              router.push('/library-enhanced')
             }, 2000)
           }
         } else {
