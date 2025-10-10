@@ -153,6 +153,7 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_calls_updated_at BEFORE UPDATE ON calls FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_transcripts_updated_at BEFORE UPDATE ON transcripts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_insights_updated_at BEFORE UPDATE ON insights FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_transcription_corrections_updated_at BEFORE UPDATE ON transcription_corrections FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- STORAGE BUCKETS SETUP

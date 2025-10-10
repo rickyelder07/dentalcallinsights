@@ -72,75 +72,113 @@ export default function UploadPage() {
     setIsUploading(true)
 
     try {
-      // Simulate progress stages
-      setUploadStatus('Preparing files...')
+      setUploadStatus('Processing CSV...')
+      setUploadProgress(5)
+
+      // First, process the CSV file
+      const csvFormData = new FormData()
+      csvFormData.append('csv', csvFile)
+
+      const csvResponse = await fetch('/api/upload/process-csv', {
+        method: 'POST',
+        body: csvFormData,
+      })
+
+      if (!csvResponse.ok) {
+        const errorData = await csvResponse.json()
+        throw new Error(errorData.message || 'Failed to process CSV')
+      }
+
+      const csvResult = await csvResponse.json()
       setUploadProgress(10)
+      setUploadStatus('CSV processed successfully')
 
-      // Create form data
-      const formData = new FormData()
-      formData.append('csv', csvFile)
-      audioFiles.forEach((file) => {
-        formData.append('audio', file)
-      })
+      // Now upload audio files individually
+      const totalFiles = audioFiles.length
+      const uploadedFiles: string[] = []
+      const uploadErrors: string[] = []
 
-      setUploadStatus('Validating CSV...')
-      setUploadProgress(20)
+      for (let i = 0; i < audioFiles.length; i++) {
+        const file = audioFiles[i]
+        const progressBase = 10 + (i / totalFiles) * 80
+        setUploadProgress(Math.round(progressBase))
+        setUploadStatus(`Uploading ${file.name}... (${i + 1}/${totalFiles})`)
 
-      // Upload files with progress tracking
-      const xhr = new XMLHttpRequest()
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round(((e.loaded / e.total) * 60) + 20)
-          setUploadProgress(percentComplete)
-          setUploadStatus(`Uploading files... ${percentComplete}%`)
-        }
-      })
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200 || xhr.status === 207) {
-          setUploadProgress(90)
-          setUploadStatus('Processing...')
-
-          const result: UploadResult = JSON.parse(xhr.responseText)
-          
-          setUploadProgress(100)
-          setUploadStatus('Upload complete!')
-          setUploadResult(result)
-
-          // If fully successful, redirect to library after a short delay
-          if (result.success && result.callsCreated && result.callsCreated.length > 0) {
-            setTimeout(() => {
-              router.push('/library-enhanced')
-            }, 2000)
+        try {
+          // Find matching CSV row for this file
+          const csvRow = csvResult.csvData.rows.find((row: any) => row.filename === file.name)
+          if (!csvRow) {
+            uploadErrors.push(`No CSV data found for file "${file.name}"`)
+            continue
           }
-        } else {
-          const result = JSON.parse(xhr.responseText)
-          setError(result.message || 'Upload failed')
-          if (result.errors && result.errors.length > 0) {
-            setUploadResult(result)
+
+          // Create form data for individual file upload
+          const fileFormData = new FormData()
+          fileFormData.append('audio', file)
+          fileFormData.append('filename', file.name)
+          fileFormData.append('callTime', csvRow.call_time)
+          fileFormData.append('direction', csvRow.direction)
+          fileFormData.append('sourceNumber', csvRow.source_number || '')
+          fileFormData.append('destinationNumber', csvRow.destination_number || '')
+          fileFormData.append('durationSeconds', csvRow.duration_seconds?.toString() || '')
+          fileFormData.append('disposition', csvRow.disposition || '')
+
+          const fileResponse = await fetch('/api/upload/single', {
+            method: 'POST',
+            body: fileFormData,
+          })
+
+          if (!fileResponse.ok) {
+            const errorData = await fileResponse.json()
+            uploadErrors.push(`Failed to upload "${file.name}": ${errorData.message}`)
+            continue
           }
-          setUploadProgress(0)
-          setUploadStatus('')
+
+          const fileResult = await fileResponse.json()
+          if (fileResult.success && fileResult.callId) {
+            uploadedFiles.push(fileResult.callId)
+          }
+        } catch (fileError) {
+          uploadErrors.push(`Error uploading "${file.name}": ${fileError instanceof Error ? fileError.message : 'Unknown error'}`)
         }
-        setIsUploading(false)
-      })
+      }
 
-      xhr.addEventListener('error', () => {
-        setError('Network error occurred during upload')
-        setUploadProgress(0)
-        setUploadStatus('')
-        setIsUploading(false)
-      })
+      setUploadProgress(95)
+      setUploadStatus('Finalizing...')
 
-      xhr.open('POST', '/api/upload')
-      xhr.send(formData)
+      // Combine results
+      const allCallIds = [...(csvResult.callsCreated || []), ...uploadedFiles]
+      const allErrors = [...(csvResult.errors || []), ...uploadErrors.map(msg => ({ row: 0, column: 'file', message: msg }))]
+
+      const result: UploadResult = {
+        success: uploadErrors.length === 0,
+        message: uploadErrors.length === 0
+          ? `Successfully uploaded ${allCallIds.length} call recordings`
+          : `Uploaded ${uploadedFiles.length} of ${totalFiles} audio files with errors`,
+        csvRowsProcessed: csvResult.csvData.rowCount,
+        audioFilesUploaded: uploadedFiles.length,
+        callsCreated: allCallIds,
+        errors: allErrors,
+        warnings: csvResult.warnings || [],
+      }
+
+      setUploadProgress(100)
+      setUploadStatus('Upload complete!')
+      setUploadResult(result)
+
+      // If fully successful, redirect to library after a short delay
+      if (result.success && result.callsCreated && result.callsCreated.length > 0) {
+        setTimeout(() => {
+          router.push('/library-enhanced')
+        }, 2000)
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'An unexpected error occurred'
       )
       setUploadProgress(0)
       setUploadStatus('')
+    } finally {
       setIsUploading(false)
     }
   }

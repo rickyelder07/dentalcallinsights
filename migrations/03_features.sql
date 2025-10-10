@@ -125,13 +125,14 @@ CREATE INDEX IF NOT EXISTS idx_filter_presets_is_default ON filter_presets(user_
 -- ============================================
 CREATE TABLE IF NOT EXISTS transcription_corrections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transcript_id UUID NOT NULL REFERENCES transcripts(id) ON DELETE CASCADE,
     user_id UUID NOT NULL,
-    original_text TEXT NOT NULL,
-    corrected_text TEXT NOT NULL,
-    correction_type TEXT DEFAULT 'manual' CHECK (correction_type IN ('manual', 'automatic')),
-    confidence_score DECIMAL(3,2),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    find_text TEXT NOT NULL,
+    replace_text TEXT NOT NULL,
+    is_regex BOOLEAN DEFAULT FALSE,
+    case_sensitive BOOLEAN DEFAULT FALSE,
+    priority INTEGER DEFAULT 100,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Enable RLS on transcription_corrections
@@ -151,8 +152,8 @@ CREATE POLICY "Users can delete own transcription corrections" ON transcription_
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Index for transcription corrections
-CREATE INDEX IF NOT EXISTS idx_transcription_corrections_transcript_id ON transcription_corrections(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_transcription_corrections_user_id ON transcription_corrections(user_id);
+CREATE INDEX IF NOT EXISTS idx_transcription_corrections_priority ON transcription_corrections(priority);
 
 -- ============================================
 -- HELPER FUNCTIONS FOR FEATURES

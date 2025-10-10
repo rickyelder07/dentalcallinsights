@@ -240,7 +240,7 @@ supabase db push
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
    SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
    OPENAI_API_KEY=sk-xxx...
-   NEXT_PUBLIC_VERCEL_URL=http://localhost:3000
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
 
 3. **⚠️ NEVER commit `.env.local` to git!** (It's already in `.gitignore`)
@@ -386,7 +386,7 @@ Returns the most similar embeddings using cosine similarity.
 
 ### Automatic Environment Variables
 
-Vercel automatically sets `NEXT_PUBLIC_VERCEL_URL` for you.
+Vercel automatically sets `NEXT_PUBLIC_APP_URL` for you.
 
 ## 🧪 Available Scripts
 
