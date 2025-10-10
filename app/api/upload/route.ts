@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           .eq('call_time', csvRow.call_time)
           .eq('source_number', csvRow.source_number || null)
           .eq('destination_number', csvRow.destination_number || null)
-          .eq('call_direction', csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound')
+          .eq('call_direction', csvRow.direction)
           .maybeSingle()  // Changed from .single() to handle multiple matches gracefully
 
         let callId: string | null = null
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           const { data: updatedCall, error: updateError } = await supabase
             .from('calls')
             .update({
-              call_direction: csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound',
+              call_direction: csvRow.direction,
               source_number: csvRow.source_number,
               source_name: csvRow.source_name,
               source_extension: csvRow.source_extension,
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
               file_type: null,
               upload_status: 'completed',
               call_time: csvRow.call_time,
-              call_direction: csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound',
+              call_direction: csvRow.direction,
               source_number: csvRow.source_number,
               source_name: csvRow.source_name,
               source_extension: csvRow.source_extension,
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
               file_size: file.size,
               file_type: file.type,
               upload_status: 'completed',
-              call_direction: csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound',
+              call_direction: csvRow.direction,
               source_number: csvRow.source_number,
               source_name: csvRow.source_name,
               source_extension: csvRow.source_extension,
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
               file_type: file.type,
               upload_status: 'completed',
               call_time: csvRow.call_time,
-              call_direction: csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound',
+              call_direction: csvRow.direction,
               source_number: csvRow.source_number,
               source_name: csvRow.source_name,
               source_extension: csvRow.source_extension,

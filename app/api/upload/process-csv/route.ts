@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
           const { data: updatedCall, error: updateError } = await supabase
             .from('calls')
             .update({
-              call_direction: csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound',
+              call_direction: csvRow.direction,
               source_number: csvRow.source_number,
               source_name: csvRow.source_name,
               source_extension: csvRow.source_extension,
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
               file_type: null,
               upload_status: 'completed',
               call_time: csvRow.call_time,
-              call_direction: csvRow.direction?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound',
+              call_direction: csvRow.direction,
               source_number: csvRow.source_number,
               source_name: csvRow.source_name,
               source_extension: csvRow.source_extension,

@@ -329,16 +329,8 @@ export class SimplifiedCsvParser {
           })
         }
 
-        // Validate direction
-        if (direction !== 'Inbound' && direction !== 'Outbound') {
-          errors.push({
-            row: rowNum,
-            column: 'Direction',
-            message: 'Direction must be "Inbound" or "Outbound"',
-            value: direction,
-          })
-          continue
-        }
+        // Note: Direction validation removed - any value is now accepted
+        // The database will still convert to lowercase for consistency
 
         // Parse call time
         const callTime = this.parseDateTime(callTimeStr)
