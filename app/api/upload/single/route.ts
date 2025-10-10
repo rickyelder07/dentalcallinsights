@@ -9,7 +9,7 @@ import { createServerClient } from '@/lib/supabase'
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/aac']
-const STORAGE_BUCKET = 'call-recordings'
+const STORAGE_BUCKET = 'audio-files'
 
 export async function POST(request: NextRequest) {
   try {

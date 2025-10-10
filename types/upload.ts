@@ -289,10 +289,10 @@ export interface Call {
 
 /**
  * Storage path structure
- * Format: call-recordings/{user_id}/{filename}
+ * Format: audio-files/{user_id}/{filename}
  */
 export interface StoragePath {
-  bucket: 'call-recordings'
+  bucket: 'audio-files'
   userId: string
   filename: string
   fullPath: string // {userId}/{filename}

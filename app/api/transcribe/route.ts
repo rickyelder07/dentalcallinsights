@@ -19,7 +19,7 @@ import {
 } from '@/lib/openai'
 import type { TranscriptionRequest, TranscriptionJobResponse } from '@/types/transcription'
 
-const STORAGE_BUCKET = 'call-recordings'
+const STORAGE_BUCKET = 'audio-files'
 
 /**
  * POST /api/transcribe

@@ -9,7 +9,7 @@ import type { StoragePath, FileUploadOptions, UploadProgress } from '@/types/upl
 /**
  * Storage bucket name for call recordings
  */
-export const STORAGE_BUCKET = 'call-recordings'
+export const STORAGE_BUCKET = 'audio-files'
 
 /**
  * Maximum file size: 100MB
