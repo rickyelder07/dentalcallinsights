@@ -72,7 +72,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       // Fetch transcript if exists
       const { data: transcriptData } = await supabase
         .from('transcripts')
-        .select('*')
+        .select('id, call_id, transcript, raw_transcript, edited_transcript, transcription_status, confidence_score, language, processing_started_at, processing_completed_at, processing_duration_seconds, created_at, edit_count, timestamps, error_message, content, language_code, processing_time_seconds, updated_at')
         .eq('call_id', callId)
         .single()
 
