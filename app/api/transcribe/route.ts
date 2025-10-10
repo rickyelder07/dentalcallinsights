@@ -27,9 +27,12 @@ const STORAGE_BUCKET = 'audio-files'
  */
 export async function POST(req: NextRequest) {
   try {
+    console.log('Transcription API called')
+    
     // Parse request body
     const body: TranscriptionRequest = await req.json()
     const { callId, language, prompt } = body
+    console.log('Request body parsed:', { callId, language, prompt })
 
     // Validate input
     if (!callId) {
@@ -40,20 +43,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate OpenAI configuration
+    console.log('Validating OpenAI configuration...')
     const configValidation = validateOpenAIConfig()
     if (!configValidation.valid) {
+      console.error('OpenAI configuration invalid:', configValidation.error)
       return NextResponse.json(
         { error: configValidation.error },
         { status: 500 }
       )
     }
+    console.log('OpenAI configuration valid')
 
     // Get user from session
+    console.log('Getting user from session...')
     const supabase = createAdminClient()
     const authHeader = req.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
 
     if (!token) {
+      console.error('No authentication token provided')
       return NextResponse.json(
         { error: 'Unauthorized: Missing authentication token' },
         { status: 401 }
@@ -67,11 +75,13 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
+      console.error('Authentication failed:', authError)
       return NextResponse.json(
         { error: 'Unauthorized: Invalid token' },
         { status: 401 }
       )
     }
+    console.log('User authenticated:', user.id)
 
     // Get call record
     const { data: call, error: callError } = await supabase
@@ -241,11 +251,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(response, { status: 202 })
   } catch (error) {
     console.error('Transcription API error:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      name: error instanceof Error ? error.name : 'Unknown error type'
+    })
 
     return NextResponse.json(
       {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? {
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          name: error instanceof Error ? error.name : 'Unknown error type'
+        } : undefined
       },
       { status: 500 }
     )
