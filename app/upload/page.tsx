@@ -94,7 +94,28 @@ export default function UploadPage() {
 
       if (!csvResponse.ok) {
         const errorData = await csvResponse.json()
-        throw new Error(errorData.message || 'Failed to process CSV')
+        
+        // Build detailed error message
+        let errorMessage = errorData.message || 'Failed to process CSV'
+        
+        if (errorData.errors && errorData.errors.length > 0) {
+          errorMessage += '\n\nValidation Errors:'
+          errorData.errors.forEach((error: any, index: number) => {
+            errorMessage += `\n${index + 1}. Row ${error.row}, Column "${error.column}": ${error.message}`
+            if (error.value) {
+              errorMessage += ` (Found: "${error.value}")`
+            }
+          })
+        }
+        
+        if (errorData.warnings && errorData.warnings.length > 0) {
+          errorMessage += '\n\nWarnings:'
+          errorData.warnings.forEach((warning: any, index: number) => {
+            errorMessage += `\n${index + 1}. Row ${warning.row}, Column "${warning.column}": ${warning.message}`
+          })
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const csvResult = await csvResponse.json()
@@ -328,8 +349,10 @@ export default function UploadPage() {
         {/* Error Display */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="font-semibold text-red-900 mb-1">Error</div>
-            <div className="text-red-800">{error}</div>
+            <div className="font-semibold text-red-900 mb-2">Error</div>
+            <div className="text-red-800 whitespace-pre-line text-sm font-mono bg-red-100 p-3 rounded border">
+              {error}
+            </div>
           </div>
         )}
 
