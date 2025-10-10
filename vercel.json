@@ -7,9 +7,6 @@
       "maxDuration": 30
     }
   },
-  "limits": {
-    "duration": 30000
-  },
   "headers": [
     {
       "source": "/api/(.*)",
