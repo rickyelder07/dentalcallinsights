@@ -7,10 +7,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/providers/auth-provider'
+import { uploadFileAndCreateRecord, simulateUploadProgress } from '@/lib/direct-upload'
 import type { UploadResult, CsvValidationError } from '@/types/upload'
 
 export default function UploadPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [audioFiles, setAudioFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -69,6 +72,11 @@ export default function UploadPage() {
       return
     }
 
+    if (!user) {
+      setError('Please sign in to upload files')
+      return
+    }
+
     setIsUploading(true)
 
     try {
@@ -93,7 +101,7 @@ export default function UploadPage() {
       setUploadProgress(10)
       setUploadStatus('CSV processed successfully')
 
-      // Now upload audio files individually
+      // Now upload audio files directly to Supabase
       const totalFiles = audioFiles.length
       const uploadedFiles: string[] = []
       const uploadErrors: string[] = []
@@ -112,31 +120,23 @@ export default function UploadPage() {
             continue
           }
 
-          // Create form data for individual file upload
-          const fileFormData = new FormData()
-          fileFormData.append('audio', file)
-          fileFormData.append('filename', file.name)
-          fileFormData.append('callTime', csvRow.call_time)
-          fileFormData.append('direction', csvRow.direction)
-          fileFormData.append('sourceNumber', csvRow.source_number || '')
-          fileFormData.append('destinationNumber', csvRow.destination_number || '')
-          fileFormData.append('durationSeconds', csvRow.duration_seconds?.toString() || '')
-          fileFormData.append('disposition', csvRow.disposition || '')
+          // Upload file directly to Supabase and create database record
+          const uploadResult = await uploadFileAndCreateRecord(
+            file,
+            user.id,
+            csvRow,
+            (progress) => {
+              // Update progress for this specific file
+              const fileProgress = Math.round(progressBase + (progress.percentage / 100) * (80 / totalFiles))
+              setUploadProgress(fileProgress)
+              setUploadStatus(`Uploading ${file.name}... ${progress.percentage}% (${i + 1}/${totalFiles})`)
+            }
+          )
 
-          const fileResponse = await fetch('/api/upload/single', {
-            method: 'POST',
-            body: fileFormData,
-          })
-
-          if (!fileResponse.ok) {
-            const errorData = await fileResponse.json()
-            uploadErrors.push(`Failed to upload "${file.name}": ${errorData.message}`)
-            continue
-          }
-
-          const fileResult = await fileResponse.json()
-          if (fileResult.success && fileResult.callId) {
-            uploadedFiles.push(fileResult.callId)
+          if (uploadResult.success && uploadResult.callId) {
+            uploadedFiles.push(uploadResult.callId)
+          } else {
+            uploadErrors.push(`Failed to upload "${file.name}": ${uploadResult.error}`)
           }
         } catch (fileError) {
           uploadErrors.push(`Error uploading "${file.name}": ${fileError instanceof Error ? fileError.message : 'Unknown error'}`)
