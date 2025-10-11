@@ -14,8 +14,10 @@ interface RedFlagsListProps {
 
 export default function RedFlagsList({ redFlags }: RedFlagsListProps) {
   // Capitalize first letter
-  const capitalize = (str: string) =>
-    str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
+  const capitalize = (str: string | null | undefined) => {
+    if (!str) return ''
+    return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
+  }
   
   // If no red flags, show success state
   if (!redFlags || redFlags.length === 0) {

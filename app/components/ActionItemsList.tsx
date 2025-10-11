@@ -14,8 +14,10 @@ interface ActionItemsListProps {
 
 export default function ActionItemsList({ actionItems }: ActionItemsListProps) {
   // Capitalize first letter
-  const capitalize = (str: string) =>
-    str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
+  const capitalize = (str: string | null | undefined) => {
+    if (!str) return ''
+    return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
+  }
   
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">

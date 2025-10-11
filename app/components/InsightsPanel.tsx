@@ -62,17 +62,17 @@ export default function InsightsPanel({
       if (existingInsights && !fetchError) {
         const cachedInsights = {
           summary: {
-            brief: existingInsights.summary_brief,
-            key_points: existingInsights.summary_key_points,
-            outcome: existingInsights.call_outcome,
+            brief: existingInsights.summary_brief || '',
+            key_points: existingInsights.summary_key_points || [],
+            outcome: existingInsights.call_outcome || '',
           },
           sentiment: {
-            overall: existingInsights.overall_sentiment,
-            patient_satisfaction: existingInsights.patient_satisfaction,
-            staff_performance: existingInsights.staff_performance,
+            overall: existingInsights.overall_sentiment || 'neutral',
+            patient_satisfaction: existingInsights.patient_satisfaction || 'neutral',
+            staff_performance: existingInsights.staff_performance || 'professional',
           },
-          action_items: existingInsights.action_items,
-          red_flags: existingInsights.red_flags,
+          action_items: existingInsights.action_items || [],
+          red_flags: existingInsights.red_flags || [],
         }
         setInsights(cachedInsights)
         setCached(true)
