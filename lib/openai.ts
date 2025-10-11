@@ -266,22 +266,94 @@ export async function transcribeAudioFromUrl(
   
   try {
     console.log(`Downloading audio file from URL: ${audioUrl}`)
+    console.log(`File: ${filename}`)
     
-    // Download audio file with timeout
-    const downloadPromise = fetch(audioUrl)
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Download timeout')), 30000) // 30 second download timeout
-    })
+    let audioBlob: Blob
     
-    const response = await Promise.race([downloadPromise, timeoutPromise])
-    
-    if (!response.ok) {
-      throw new Error(`Failed to download audio: ${response.statusText}`)
-    }
+    try {
+      // Try direct download first
+      const downloadStartTime = Date.now()
+      const downloadPromise = fetch(audioUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'audio/*',
+        },
+      })
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          const elapsed = Date.now() - downloadStartTime
+          reject(new Error(`Download timeout after ${elapsed}ms (15 seconds)`))
+        }, 15000) // Reduced to 15 seconds
+      })
+      
+      console.log(`Starting download with 15-second timeout...`)
+      const response = await Promise.race([downloadPromise, timeoutPromise])
+      const downloadDuration = Date.now() - downloadStartTime
+      
+      console.log(`Download completed in ${downloadDuration}ms, status: ${response.status}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
+      }
 
-    console.log(`Audio file downloaded, creating blob...`)
-    const audioBlob = await response.blob()
-    console.log(`Audio blob created, size: ${audioBlob.size} bytes`)
+      // Check content length
+      const contentLength = response.headers.get('content-length')
+      if (contentLength) {
+        const sizeMB = Math.round(parseInt(contentLength) / 1024 / 1024 * 100) / 100
+        console.log(`Expected file size: ${sizeMB}MB`)
+      }
+
+      console.log(`Audio file downloaded, creating blob...`)
+      const blobStartTime = Date.now()
+      
+      // Create blob with timeout
+      const blobPromise = response.blob()
+      const blobTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Blob creation timeout')), 10000) // 10 seconds for blob creation
+      })
+      
+      audioBlob = await Promise.race([blobPromise, blobTimeoutPromise])
+      const blobDuration = Date.now() - blobStartTime
+      
+      console.log(`Audio blob created in ${blobDuration}ms, size: ${audioBlob.size} bytes`)
+      
+    } catch (downloadError) {
+      console.error(`Direct download failed: ${downloadError}`)
+      console.log(`Attempting fallback download method...`)
+      
+      // Fallback: Try to extract storage path and use Supabase client
+      const urlMatch = audioUrl.match(/audio-files\/([^\/]+)\/(.+)\?/)
+      if (urlMatch) {
+        const [, userId, filePath] = urlMatch
+        console.log(`Extracted storage path: ${userId}/${filePath}`)
+        
+        // Import Supabase client for fallback
+        const { createAdminClient } = await import('@/lib/supabase-server')
+        const supabase = createAdminClient()
+        
+        const { data, error } = await supabase.storage
+          .from('audio-files')
+          .download(`${userId}/${filePath}`)
+        
+        if (error) {
+          throw new Error(`Fallback download failed: ${error.message}`)
+        }
+        
+        audioBlob = data
+        console.log(`Fallback download successful, size: ${audioBlob.size} bytes`)
+      } else {
+        throw new Error(`Could not extract storage path from URL: ${audioUrl}`)
+      }
+    }
+    
+    // Validate blob size
+    if (audioBlob.size === 0) {
+      throw new Error('Downloaded audio file is empty')
+    }
+    
+    const blobSizeMB = Math.round(audioBlob.size / 1024 / 1024 * 100) / 100
+    console.log(`Final blob size: ${blobSizeMB}MB`)
 
     // Transcribe with timeout
     console.log(`Starting transcription for ${filename}...`)
