@@ -38,6 +38,7 @@ export default function CallScoringPanel({
   const [existingScore, setExistingScore] = useState<CallScoreWithCriteria | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -220,6 +221,67 @@ export default function CallScoringPanel({
       setError('Failed to generate AI scoring suggestions')
     } finally {
       setIsGeneratingAI(false)
+    }
+  }
+
+  const handleDeleteScore = async () => {
+    if (!existingScore) return
+
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this QA score? This action cannot be undone.'
+    )
+
+    if (!confirmed) return
+
+    try {
+      setIsDeleting(true)
+      setError(null)
+      setSuccessMessage(null)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('Not authenticated')
+        return
+      }
+
+      const response = await fetch(`/api/qa/scores/${existingScore.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        setError(result.error || 'Failed to delete score')
+        return
+      }
+
+      setSuccessMessage('Score deleted successfully!')
+      setExistingScore(null)
+      
+      // Reset form
+      setCriteria([])
+      setScorerNotes('')
+      setAgentName('')
+      setReviewStatus('completed')
+      setAiConfidence(null)
+      setAiReasoning(null)
+      setShowAIInfo(false)
+      
+      // Reload criteria
+      await initializeCriteria()
+
+      if (onSaved) {
+        onSaved()
+      }
+
+    } catch (error) {
+      console.error('Error deleting score:', error)
+      setError('Failed to delete score')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -502,35 +564,61 @@ export default function CallScoringPanel({
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-                    <button
-                      onClick={onClose}
-                      disabled={isSaving}
-                      className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => handleSave(true)}
-                      disabled={isSaving}
-                      className="px-6 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
-                    >
-                      Save as Draft
-                    </button>
-                    <button
-                      onClick={() => handleSave(false)}
-                      disabled={isSaving}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>Save Score</>
-                      )}
-                    </button>
+                  <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                    {/* Delete Button - Only show if there's an existing score */}
+                    {existingScore && (
+                      <button
+                        onClick={handleDeleteScore}
+                        disabled={isSaving || isDeleting}
+                        className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Score
+                          </>
+                        )}
+                      </button>
+                    )}
+                    
+                    {/* Right side buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={onClose}
+                        disabled={isSaving || isDeleting}
+                        className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleSave(true)}
+                        disabled={isSaving || isDeleting}
+                        className="px-6 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+                      >
+                        Save as Draft
+                      </button>
+                      <button
+                        onClick={() => handleSave(false)}
+                        disabled={isSaving || isDeleting}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isSaving ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>Save Score</>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
