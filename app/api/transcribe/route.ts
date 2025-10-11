@@ -231,11 +231,27 @@ export async function POST(req: NextRequest) {
 
     // Process transcription asynchronously
     // Note: In production, this should be handled by a queue system (e.g., BullMQ, Inngest, etc.)
-    processTranscription(callId, call.audio_path, call.filename, user.id, jobId, {
-      language,
-      prompt,
-    }).catch((error) => {
-      console.error('Background transcription error:', error)
+    setImmediate(() => {
+      processTranscription(callId, call.audio_path, call.filename, user.id, jobId, {
+        language,
+        prompt,
+      }).catch(async (error) => {
+        console.error('Background transcription error:', error)
+        // Update job status to failed
+        try {
+          await supabase
+            .from('transcription_jobs')
+            .update({ 
+              status: 'failed', 
+              error_message: error instanceof Error ? error.message : 'Unknown error',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', jobId)
+          console.log('Updated job status to failed')
+        } catch (updateError) {
+          console.error('Failed to update job status:', updateError)
+        }
+      })
     })
 
     // Return job response
@@ -286,8 +302,25 @@ async function processTranscription(
 ) {
   const supabase = createAdminClient()
   const startTime = Date.now()
+  const MAX_PROCESSING_TIME = 25 * 60 * 1000 // 25 minutes (under Vercel's 30min limit)
+
+  // Set up timeout to prevent hanging
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Transcription timeout after ${MAX_PROCESSING_TIME / 1000 / 60} minutes`))
+    }, MAX_PROCESSING_TIME)
+  })
 
   try {
+    console.log(`Starting transcription processing for call ${callId}, job ${jobId}`)
+    
+    // Race between transcription and timeout
+    await Promise.race([
+      performTranscription(),
+      timeoutPromise
+    ])
+
+    async function performTranscription() {
     // Get signed URL for audio file (server-side using admin client)
     const storagePath = `${userId}/${filename}`
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
@@ -366,6 +399,8 @@ async function processTranscription(
       .eq('id', jobId)
 
     console.log(`Transcription completed for call ${callId}`)
+    } // End of performTranscription function
+
   } catch (error) {
     console.error(`Transcription failed for call ${callId}:`, error)
 

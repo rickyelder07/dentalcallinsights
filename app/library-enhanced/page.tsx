@@ -58,6 +58,7 @@ export default function EnhancedLibraryPage() {
   
   // Bulk operation progress
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingStatus, setProcessingStatus] = useState<string>('')
   
   // UI state
   const [showFilters, setShowFilters] = useState(false)
@@ -284,26 +285,77 @@ export default function EnhancedLibraryPage() {
     }
 
     setIsProcessing(true)
+    setProcessingStatus('Starting bulk transcription...')
+    
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[]
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      for (const call of callsToTranscribe) {
-        await fetch('/api/transcribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ callId: call.id }),
-        })
+      if (!session) {
+        alert('Please sign in to transcribe calls')
+        return
       }
 
-      alert('Transcription started for selected calls')
+      // Process calls sequentially to avoid overwhelming the API
+      for (let i = 0; i < callsToTranscribe.length; i++) {
+        const call = callsToTranscribe[i]
+        
+        try {
+          setProcessingStatus(`Processing call ${i + 1}/${callsToTranscribe.length}: ${call.filename}`)
+          console.log(`Starting transcription for call ${i + 1}/${callsToTranscribe.length}: ${call.filename}`)
+          
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ callId: call.id }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || `HTTP ${response.status}`)
+          }
+
+          const result = await response.json()
+          console.log(`Transcription started for ${call.filename}:`, result)
+          results.success++
+
+          // Small delay between requests to avoid overwhelming the API
+          if (i < callsToTranscribe.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
+
+        } catch (error) {
+          console.error(`Failed to start transcription for ${call.filename}:`, error)
+          results.failed++
+          results.errors.push(`${call.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+
+      // Show results
+      let message = `Transcription started for ${results.success} call(s)`
+      if (results.failed > 0) {
+        message += `\n\nFailed to start ${results.failed} call(s):\n${results.errors.join('\n')}`
+      }
+      
+      alert(message)
       clearSelection()
-      setTimeout(fetchCalls, 2000)
+      
+      // Refresh calls data after a short delay
+      setTimeout(fetchCalls, 3000)
+
+    } catch (error) {
+      console.error('Bulk transcription error:', error)
+      alert(`Failed to start bulk transcription: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsProcessing(false)
+      setProcessingStatus('')
     }
   }
 
@@ -701,6 +753,16 @@ export default function EnhancedLibraryPage() {
         onBulkGenerateEmbeddings={handleBulkGenerateEmbeddings}
         onExport={handleExport}
       />
+
+      {/* Processing Status */}
+      {isProcessing && processingStatus && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+            <span className="text-blue-800 font-medium">{processingStatus}</span>
+          </div>
+        </div>
+      )}
 
       {/* Call List with QA Score Button */}
       <div className="mt-6">
