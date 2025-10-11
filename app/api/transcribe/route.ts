@@ -214,6 +214,7 @@ export async function POST(req: NextRequest) {
       .from('transcripts')
       .upsert({
         call_id: callId,
+        user_id: user.id,
         transcription_status: 'processing',
         processing_started_at: new Date().toISOString(),
         transcript: 'Processing...', // Temporary placeholder (non-empty)
@@ -328,6 +329,7 @@ async function processTranscription(
       .from('transcripts')
       .upsert({
         call_id: callId,
+        user_id: userId,
         raw_transcript: whisperResponse.text,
         edited_transcript: correctedText, // Always save corrected version
         transcript: correctedText, // Legacy field shows corrected
