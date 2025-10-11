@@ -334,7 +334,10 @@ async function processTranscription(
 
     console.log(`Created signed URL for: ${storagePath}`)
 
-    // Transcribe audio
+    // Transcribe audio with timeout protection
+    console.log(`Starting OpenAI transcription for ${filename}...`)
+    const transcriptionStartTime = Date.now()
+    
     const whisperResponse = await transcribeAudioFromUrl(
       signedUrlData.signedUrl,
       filename,
@@ -345,6 +348,9 @@ async function processTranscription(
         timestampGranularities: ['segment'],
       }
     )
+    
+    const transcriptionDuration = Date.now() - transcriptionStartTime
+    console.log(`OpenAI transcription completed for ${filename} in ${transcriptionDuration}ms`)
 
     // Calculate metrics
     const confidenceScore = calculateConfidenceScore(whisperResponse.segments)

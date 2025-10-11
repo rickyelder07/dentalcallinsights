@@ -14,6 +14,7 @@ import CallList from '../components/CallList'
 import BulkActions from '../components/BulkActions'
 import ExportModal from '../components/ExportModal'
 import CallScoringPanel from '../components/CallScoringPanel'
+import BulkTranscriptionProgress from '../components/BulkTranscriptionProgress'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { FilterConfig } from '@/types/filters'
@@ -59,6 +60,8 @@ export default function EnhancedLibraryPage() {
   // Bulk operation progress
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string>('')
+  const [showTranscriptionProgress, setShowTranscriptionProgress] = useState(false)
+  const [transcriptionJobs, setTranscriptionJobs] = useState<any[]>([])
   
   // UI state
   const [showFilters, setShowFilters] = useState(false)
@@ -261,6 +264,29 @@ export default function EnhancedLibraryPage() {
     setSelectedCalls(new Set())
   }
 
+  // Handle transcription progress completion
+  const handleTranscriptionComplete = (results: { success: number; failed: number; errors: string[] }) => {
+    setShowTranscriptionProgress(false)
+    setTranscriptionJobs([])
+    
+    // Show results
+    let message = `Transcription completed!\n\nSuccessfully transcribed: ${results.success} call(s)`
+    if (results.failed > 0) {
+      message += `\nFailed: ${results.failed} call(s)\n\nErrors:\n${results.errors.join('\n')}`
+    }
+    
+    alert(message)
+    
+    // Refresh calls data
+    fetchCalls()
+  }
+
+  // Handle transcription progress cancellation
+  const handleTranscriptionCancel = () => {
+    setShowTranscriptionProgress(false)
+    setTranscriptionJobs([])
+  }
+
   // Bulk operations
   const handleBulkTranscribe = async () => {
     const callsToTranscribe = filteredCalls.filter((c) => 
@@ -287,6 +313,7 @@ export default function EnhancedLibraryPage() {
     setIsProcessing(true)
     setProcessingStatus('Starting bulk transcription...')
     
+    const jobs: any[] = []
     const results = {
       success: 0,
       failed: 0,
@@ -305,7 +332,7 @@ export default function EnhancedLibraryPage() {
         const call = callsToTranscribe[i]
         
         try {
-          setProcessingStatus(`Processing call ${i + 1}/${callsToTranscribe.length}: ${call.filename}`)
+          setProcessingStatus(`Starting transcription ${i + 1}/${callsToTranscribe.length}: ${call.filename}`)
           console.log(`Starting transcription for call ${i + 1}/${callsToTranscribe.length}: ${call.filename}`)
           
           const response = await fetch('/api/transcribe', {
@@ -324,6 +351,15 @@ export default function EnhancedLibraryPage() {
 
           const result = await response.json()
           console.log(`Transcription started for ${call.filename}:`, result)
+          
+          // Add job to tracking list
+          jobs.push({
+            id: result.jobId,
+            callId: call.id,
+            filename: call.filename,
+            status: 'pending'
+          })
+          
           results.success++
 
           // Small delay between requests to avoid overwhelming the API
@@ -338,17 +374,15 @@ export default function EnhancedLibraryPage() {
         }
       }
 
-      // Show results
-      let message = `Transcription started for ${results.success} call(s)`
-      if (results.failed > 0) {
-        message += `\n\nFailed to start ${results.failed} call(s):\n${results.errors.join('\n')}`
+      // Show progress window if we have successful jobs
+      if (jobs.length > 0) {
+        setTranscriptionJobs(jobs)
+        setShowTranscriptionProgress(true)
+        clearSelection()
+      } else {
+        // No successful jobs, show error
+        alert(`Failed to start any transcriptions:\n${results.errors.join('\n')}`)
       }
-      
-      alert(message)
-      clearSelection()
-      
-      // Refresh calls data after a short delay
-      setTimeout(fetchCalls, 3000)
 
     } catch (error) {
       console.error('Bulk transcription error:', error)
@@ -901,6 +935,15 @@ export default function EnhancedLibraryPage() {
           call={scoringCall}
           onClose={handleCloseScoring}
           onSaved={handleScoringSaved}
+        />
+      )}
+
+      {/* Bulk Transcription Progress */}
+      {showTranscriptionProgress && (
+        <BulkTranscriptionProgress
+          jobs={transcriptionJobs}
+          onComplete={handleTranscriptionComplete}
+          onCancel={handleTranscriptionCancel}
         />
       )}
     </div>

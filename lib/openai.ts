@@ -262,18 +262,41 @@ export async function transcribeAudioFromUrl(
   filename: string,
   options: TranscribeOptions = {}
 ): Promise<WhisperResponse> {
+  const TRANSCRIPTION_TIMEOUT = 20 * 60 * 1000 // 20 minutes timeout
+  
   try {
-    // Download audio file
-    const response = await fetch(audioUrl)
+    console.log(`Downloading audio file from URL: ${audioUrl}`)
+    
+    // Download audio file with timeout
+    const downloadPromise = fetch(audioUrl)
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Download timeout')), 30000) // 30 second download timeout
+    })
+    
+    const response = await Promise.race([downloadPromise, timeoutPromise])
+    
     if (!response.ok) {
       throw new Error(`Failed to download audio: ${response.statusText}`)
     }
 
+    console.log(`Audio file downloaded, creating blob...`)
     const audioBlob = await response.blob()
+    console.log(`Audio blob created, size: ${audioBlob.size} bytes`)
 
-    // Transcribe
-    return await transcribeAudio(audioBlob, filename, options)
+    // Transcribe with timeout
+    console.log(`Starting transcription for ${filename}...`)
+    const transcriptionPromise = transcribeAudio(audioBlob, filename, options)
+    const transcriptionTimeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Transcription timeout')), TRANSCRIPTION_TIMEOUT)
+    })
+    
+    const result = await Promise.race([transcriptionPromise, transcriptionTimeoutPromise])
+    console.log(`Transcription completed for ${filename}`)
+    
+    return result
   } catch (error) {
+    console.error(`Transcription failed for ${filename}:`, error)
+    
     if (isTranscriptionError(error)) {
       throw error
     }
