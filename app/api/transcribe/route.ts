@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { sendEvent } from '@/lib/inngest'
 import {
   transcribeAudioFromUrl,
   calculateConfidenceScore,
@@ -237,30 +238,56 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create transcript: ${upsertError.message}`)
     }
 
-    // Process transcription asynchronously
-    // Note: In production, this should be handled by a queue system (e.g., BullMQ, Inngest, etc.)
-    setImmediate(() => {
-      processTranscription(callId, call.audio_path, call.filename, user.id, jobId, {
+    // Trigger Inngest transcription event
+    // This will handle long-running transcriptions without timeout limits
+    try {
+      await sendEvent('transcription/start', {
+        callId,
+        userId: user.id,
+        filename: call.filename,
+        audioPath: call.audio_path,
         language,
         prompt,
-      }).catch(async (error) => {
-        console.error('Background transcription error:', error)
-        // Update job status to failed
-        try {
-          await supabase
-            .from('transcription_jobs')
-            .update({ 
-              status: 'failed', 
-              error_message: error instanceof Error ? error.message : 'Unknown error',
-              completed_at: new Date().toISOString()
-            })
-            .eq('id', jobId)
-          console.log('Updated job status to failed')
-        } catch (updateError) {
-          console.error('Failed to update job status:', updateError)
-        }
       })
-    })
+      console.log(`Inngest transcription event triggered for call ${callId}`)
+    } catch (error) {
+      console.error('Failed to trigger Inngest transcription:', error)
+      // Fallback to direct processing for short calls
+      if (call.call_duration_seconds && call.call_duration_seconds < 60) {
+        console.log('Falling back to direct processing for short call')
+        setImmediate(() => {
+          processTranscription(callId, call.audio_path, call.filename, user.id, jobId, {
+            language,
+            prompt,
+          }).catch(async (error) => {
+            console.error('Fallback transcription error:', error)
+            await supabase
+              .from('transcription_jobs')
+              .update({ 
+                status: 'failed', 
+                error_message: error instanceof Error ? error.message : 'Unknown error',
+                completed_at: new Date().toISOString()
+              })
+              .eq('id', jobId)
+          })
+        })
+      } else {
+        // For long calls, fail if Inngest is not available
+        await supabase
+          .from('transcription_jobs')
+          .update({ 
+            status: 'failed', 
+            error_message: 'Inngest service unavailable for long transcription',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', jobId)
+        
+        return NextResponse.json(
+          { error: 'Transcription service unavailable' },
+          { status: 503 }
+        )
+      }
+    }
 
     // Return job response
     const response: TranscriptionJobResponse = {
@@ -419,7 +446,7 @@ async function processTranscription(
     console.error(`Transcription failed for call ${callId}:`, error)
 
     // Determine if error is retryable
-    const isRetryable = isTranscriptionError(error) && error.retryable
+    const isRetryable = isTranscriptionError(error as Error) && (error as any).retryable
 
     // Get current retry count
     const { data: job } = await supabase

@@ -54,7 +54,7 @@ export default function BulkTranscriptionProgress({
         const callIds = jobs.map(job => job.callId)
         const { data: updatedJobs, error } = await supabase
           .from('transcription_jobs')
-          .select('id, call_id, status, error_message, completed_at')
+          .select('id, call_id, status, error_message, completed_at, metadata')
           .in('call_id', callIds)
 
         if (error) {
@@ -67,10 +67,14 @@ export default function BulkTranscriptionProgress({
           const updated = { ...prev }
           updatedJobs?.forEach(job => {
             if (updated[job.call_id]) {
+              const metadata = job.metadata as any
               updated[job.call_id] = {
                 ...updated[job.call_id],
                 status: job.status as any,
                 error: job.error_message || undefined,
+                progress: metadata?.progress || (job.status === 'completed' ? 100 : job.status === 'failed' ? 100 : 50),
+                stage: metadata?.stage || 'processing',
+                message: metadata?.message,
               }
             }
           })
@@ -212,10 +216,17 @@ export default function BulkTranscriptionProgress({
                       style={{ 
                         width: currentJob.status === 'completed' ? '100%' : 
                               currentJob.status === 'failed' ? '100%' : 
-                              currentJob.status === 'processing' ? '60%' : '20%'
+                              `${currentJob.progress || 50}%`
                       }}
                     />
                   </div>
+                  {/* Progress text */}
+                  {currentJob.progress && currentJob.status === 'processing' && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {currentJob.progress}% - {currentJob.stage || 'Processing...'}
+                      {currentJob.message && ` (${currentJob.message})`}
+                    </div>
+                  )}
                 </div>
 
                 {/* Error message */}
