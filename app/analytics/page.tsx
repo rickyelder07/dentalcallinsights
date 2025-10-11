@@ -180,7 +180,8 @@ export default function AnalyticsPage() {
 
       if (sentimentFilter !== 'all') {
         filtered = filtered.filter((call: any) => {
-          return call.insights?.overall_sentiment === sentimentFilter
+          const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
+          return insights?.overall_sentiment === sentimentFilter
         })
       }
 

@@ -120,7 +120,7 @@ export default function EnhancedLibraryPage() {
       const transformedCalls: CallWithTranscript[] = callsData.map((call: any) => ({
         ...call,
         transcript: call.transcript || null,
-        insights: call.insights || null,
+        insights: Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null,
         hasEmbeddings: callIdToHasEmbeddings.has(call.id),
         qaScore: Array.isArray(call.qaScore) && call.qaScore.length > 0 ? call.qaScore[0] : null,
       }))
