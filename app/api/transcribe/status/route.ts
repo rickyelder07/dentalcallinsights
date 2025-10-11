@@ -18,9 +18,8 @@ import type { TranscriptionStatusResponse } from '@/types/transcription'
 export async function GET(req: NextRequest) {
   try {
     // Get callId from query params
-    const { searchParams } = new URL(req.url)
-    const callId = searchParams.get('callId')
-    const jobId = searchParams.get('jobId')
+    const callId = req.nextUrl.searchParams.get('callId')
+    const jobId = req.nextUrl.searchParams.get('jobId')
 
     if (!callId && !jobId) {
       return NextResponse.json(

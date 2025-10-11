@@ -98,6 +98,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Log call duration for debugging
+    console.log(`Call duration: ${call.call_duration_seconds} seconds`)
+    
+    // Warn about long calls
+    if (call.call_duration_seconds && call.call_duration_seconds > 60) {
+      console.log(`⚠️ Long call detected (${call.call_duration_seconds}s). This may take several minutes to transcribe.`)
+    }
+    
     // Check if call is too short (< 6 seconds)
     const MIN_CALL_DURATION = 6
     if (call.call_duration_seconds && call.call_duration_seconds < MIN_CALL_DURATION) {
@@ -302,7 +310,7 @@ async function processTranscription(
 ) {
   const supabase = createAdminClient()
   const startTime = Date.now()
-  const MAX_PROCESSING_TIME = 25 * 60 * 1000 // 25 minutes (under Vercel's 30min limit)
+  const MAX_PROCESSING_TIME = 4 * 60 * 1000 // 4 minutes (under Vercel's 5min limit)
 
   // Set up timeout to prevent hanging
   const timeoutPromise = new Promise((_, reject) => {

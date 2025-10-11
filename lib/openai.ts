@@ -262,7 +262,7 @@ export async function transcribeAudioFromUrl(
   filename: string,
   options: TranscribeOptions = {}
 ): Promise<WhisperResponse> {
-  const TRANSCRIPTION_TIMEOUT = 20 * 60 * 1000 // 20 minutes timeout
+  const TRANSCRIPTION_TIMEOUT = 3 * 60 * 1000 // 3 minutes timeout (under Vercel's 5min limit)
   
   try {
     console.log(`Downloading audio file from URL: ${audioUrl}`)
