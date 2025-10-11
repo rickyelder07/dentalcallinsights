@@ -88,8 +88,8 @@ export default function EnhancedLibraryPage() {
       const { data: callsData, error: fetchError } = await supabase
         .from('calls')
         .select(`
-          *,
-          transcript:transcripts(*),
+          id, user_id, filename, audio_path, file_size, file_type, upload_status, call_time, call_direction, source_number, source_name, source_extension, destination_number, destination_extension, call_duration_seconds, disposition, time_to_answer_seconds, call_flow, processing_status, error_message, created_at, updated_at,
+          transcript:transcripts(id, call_id, content, transcript, raw_transcript, edited_transcript, transcription_status, confidence_score, language_code, language, processing_time_seconds, processing_duration_seconds, timestamps, edit_count, error_message, created_at, updated_at),
           insights:insights(*),
           qaScore:call_scores(*)
         `)
