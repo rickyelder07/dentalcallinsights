@@ -244,11 +244,15 @@ export default function CallScoringPanel({
         return
       }
 
-      const response = await fetch(`/api/qa/scores/${existingScore.id}`, {
+      const response = await fetch('/api/qa/delete-score', {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`
-        }
+        },
+        body: JSON.stringify({
+          scoreId: existingScore.id
+        })
       })
 
       const result = await response.json()

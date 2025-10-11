@@ -1,15 +1,12 @@
 /**
- * DELETE /api/qa/scores/:scoreId
+ * DELETE /api/qa/delete-score
  * Delete a specific QA score and its criteria
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAPIClient } from '@/lib/supabase-server'
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { scoreId: string } }
-) {
+export async function DELETE(request: NextRequest) {
   try {
     // Get authorization token from header
     const authHeader = request.headers.get('authorization')
@@ -34,7 +31,16 @@ export async function DELETE(
       )
     }
 
-    const scoreId = params.scoreId
+    // Parse request body to get scoreId
+    const body = await request.json()
+    const { scoreId } = body
+
+    if (!scoreId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing scoreId' },
+        { status: 400 }
+      )
+    }
 
     // Verify score belongs to user
     const { data: score, error: scoreError } = await supabase
@@ -77,7 +83,7 @@ export async function DELETE(
     })
 
   } catch (error) {
-    console.error('Error in DELETE /api/qa/scores/:scoreId:', error)
+    console.error('Error in DELETE /api/qa/delete-score:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
