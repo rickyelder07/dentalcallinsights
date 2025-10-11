@@ -66,6 +66,16 @@ export default function EnhancedLibraryPage() {
     fetchCalls()
   }, [])
 
+  // Refresh calls when returning from other pages (e.g., after generating insights)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchCalls()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
   useEffect(() => {
     applyAllFilters()
   }, [calls, filters, searchQuery, statusFilter, sentimentFilter, dateRangeStart, dateRangeEnd, durationMin, durationMax, directionFilter, sourceNumberFilter])
@@ -445,6 +455,20 @@ export default function EnhancedLibraryPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={fetchCalls}
+              disabled={isLoading}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              Refresh
+            </button>
             <button
               onClick={() => router.push('/qa')}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"

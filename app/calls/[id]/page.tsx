@@ -494,6 +494,10 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
           <InsightsPanel 
             callId={callId} 
             callDuration={call?.call_duration_seconds}
+            onInsightsGenerated={(insights) => {
+              // Insights generated - could trigger a refresh of parent pages
+              console.log('Insights generated for call:', callId)
+            }}
           />
         )}
 
