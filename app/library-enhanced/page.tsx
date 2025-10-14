@@ -598,7 +598,7 @@ export default function EnhancedLibraryPage() {
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-purple-600">
-            {calls.filter((c) => c.insights).length}
+            {calls.filter((c) => c.insights && c.insights !== null).length}
           </div>
           <div className="text-sm text-gray-600">With Insights</div>
         </div>

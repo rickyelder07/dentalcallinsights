@@ -231,7 +231,11 @@ export default function AnalyticsPage() {
     
     const insightsCallIds = new Set(
       calls
-        .filter((c) => c.insights)
+        .filter((c) => {
+          // Handle insights consistently with library page
+          const insights = Array.isArray(c.insights) && c.insights.length > 0 ? c.insights[0] : null
+          return insights !== null
+        })
         .map((c) => c.id)
     )
     
@@ -244,7 +248,9 @@ export default function AnalyticsPage() {
     }
     
     calls.forEach((call) => {
-      const sentiment = call.insights?.overall_sentiment
+      // Handle insights consistently with library page
+      const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
+      const sentiment = insights?.overall_sentiment
       if (sentiment && sentiment in sentimentCounts) {
         sentimentCounts[sentiment as keyof typeof sentimentCounts]++
       }
@@ -260,11 +266,17 @@ export default function AnalyticsPage() {
     
     // Calculate action items and red flags
     const callsWithActionItems = calls.filter(
-      (c) => c.insights?.action_items && Array.isArray(c.insights.action_items) && c.insights.action_items.length > 0
+      (c) => {
+        const insights = Array.isArray(c.insights) && c.insights.length > 0 ? c.insights[0] : null
+        return insights?.action_items && Array.isArray(insights.action_items) && insights.action_items.length > 0
+      }
     ).length
     
     const callsWithRedFlags = calls.filter(
-      (c) => c.insights?.red_flags && Array.isArray(c.insights.red_flags) && c.insights.red_flags.length > 0
+      (c) => {
+        const insights = Array.isArray(c.insights) && c.insights.length > 0 ? c.insights[0] : null
+        return insights?.red_flags && Array.isArray(insights.red_flags) && insights.red_flags.length > 0
+      }
     ).length
     
     // Get date range
@@ -310,18 +322,18 @@ export default function AnalyticsPage() {
     }
     
     calls.forEach((call) => {
-      const insight = call.insights
-      if (!insight) return
+      const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
+      if (!insights) return
 
       // Count sentiments
-      const sentiment = insight.overall_sentiment
+      const sentiment = insights.overall_sentiment
       if (sentiment && sentiment in sentimentCounts) {
         sentimentCounts[sentiment as keyof typeof sentimentCounts]++
       }
 
       // Count satisfaction levels
-      if (insight.patient_satisfaction) {
-        const satisfaction = insight.patient_satisfaction.toLowerCase()
+      if (insights.patient_satisfaction) {
+        const satisfaction = insights.patient_satisfaction.toLowerCase()
         if (satisfaction in satisfactionCounts) {
           satisfactionCounts[satisfaction as keyof typeof satisfactionCounts]++
         }
@@ -362,24 +374,24 @@ export default function AnalyticsPage() {
     let appointmentsCancelled = 0
 
     calls.forEach((call) => {
-      const insight = call.insights
-      if (!insight) return
+      const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
+      if (!insights) return
 
       // Count outcomes
-      if (insight.call_outcome) {
-        outcomeCounts[insight.call_outcome] = (outcomeCounts[insight.call_outcome] || 0) + 1
+      if (insights.call_outcome) {
+        outcomeCounts[insights.call_outcome] = (outcomeCounts[insights.call_outcome] || 0) + 1
       }
 
       // Count professional calls
-      if (insight.staff_performance === 'professional') {
+      if (insights.staff_performance === 'professional') {
         professionalCalls++
-      } else if (insight.staff_performance === 'needs_improvement') {
+      } else if (insights.staff_performance === 'needs_improvement') {
         needsImprovementCalls++
       }
 
       // Count appointments
-      if (insight.appointment_scheduled) appointmentsScheduled++
-      if (insight.appointment_cancelled) appointmentsCancelled++
+      if (insights.appointment_scheduled) appointmentsScheduled++
+      if (insights.appointment_cancelled) appointmentsCancelled++
     })
 
     const totalCalls = calls.length
@@ -692,15 +704,18 @@ export default function AnalyticsPage() {
                             Transcribed
                           </span>
                         )}
-                        {call.insights?.overall_sentiment && (
-                          <span className={`px-2 py-0.5 text-xs rounded ${
-                            call.insights.overall_sentiment === 'positive' ? 'bg-green-100 text-green-700' :
-                            call.insights.overall_sentiment === 'negative' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {call.insights.overall_sentiment}
-                          </span>
-                        )}
+                        {(() => {
+                          const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
+                          return insights?.overall_sentiment && (
+                            <span className={`px-2 py-0.5 text-xs rounded ${
+                              insights.overall_sentiment === 'positive' ? 'bg-green-100 text-green-700' :
+                              insights.overall_sentiment === 'negative' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {insights.overall_sentiment}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
                     <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
