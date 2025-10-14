@@ -9,10 +9,11 @@ import {
   handleTranscriptionError, 
   trackTranscriptionProgress 
 } from '@/lib/inngest-transcription'
+import { inngest } from '@/lib/inngest'
 
 // Export the Inngest serve handler
 export const { GET, POST, PUT } = serve({
-  client: { id: 'dental-call-insights' },
+  client: inngest,
   functions: [
     transcribeCall,
     handleTranscriptionError,

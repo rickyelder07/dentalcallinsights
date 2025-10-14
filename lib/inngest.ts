@@ -52,7 +52,6 @@ export interface TranscriptionEvents {
 export const inngest = new Inngest({
   id: 'dental-call-insights',
   name: 'Dental Call Insights',
-  eventKey: process.env.INNGEST_EVENT_KEY,
 })
 
 // Helper function to send events
