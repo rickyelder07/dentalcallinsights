@@ -178,8 +178,8 @@ export default function CallCard({
               </span>
             )}
             {call.hasEmbeddings && (
-              <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
-                🔍 Searchable
+              <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+                📊 Embedded
               </span>
             )}
           </div>

@@ -602,9 +602,17 @@ export default function EnhancedLibraryPage() {
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-purple-600">
-            {rawCallsData.filter((c) => c.insights && Array.isArray(c.insights) && c.insights.length > 0).length}
+            {(() => {
+              // Use same counting method as Analytics API
+              const insightsCallIds = new Set(
+                rawCallsData
+                  .filter((c) => c.insights && Array.isArray(c.insights) && c.insights.length > 0)
+                  .map((c) => c.id)
+              )
+              return insightsCallIds.size
+            })()}
           </div>
-          <div className="text-sm text-gray-600">With Insights</div>
+          <div className="text-sm text-gray-600">AI Insights</div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-orange-600">
