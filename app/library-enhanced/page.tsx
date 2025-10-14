@@ -604,6 +604,9 @@ export default function EnhancedLibraryPage() {
           <div className="text-2xl font-bold text-purple-600">
             {(() => {
               // Use same counting method as Analytics API
+              if (!rawCallsData || rawCallsData.length === 0) {
+                return 0
+              }
               const insightsCallIds = new Set(
                 rawCallsData
                   .filter((c) => c.insights && Array.isArray(c.insights) && c.insights.length > 0)
@@ -896,6 +899,11 @@ export default function EnhancedLibraryPage() {
                       {call.insights && (
                         <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
                           🤖 AI Insights
+                        </span>
+                      )}
+                      {call.hasEmbeddings && (
+                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+                          📊 Embedded
                         </span>
                       )}
                       {call.qaScore && (
