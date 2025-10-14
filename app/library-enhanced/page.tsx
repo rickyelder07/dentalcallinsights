@@ -134,14 +134,24 @@ export default function EnhancedLibraryPage() {
       // Store raw data for accurate counting
       setRawCallsData(callsData)
 
+      // Debug logging
+      console.log('Sample call data:', callsData[0])
+      console.log('Sample transcript:', callsData[0]?.transcript)
+      console.log('Sample insights:', callsData[0]?.insights)
+      console.log('Sample qaScore:', callsData[0]?.qaScore)
+
       // Transform data
       const transformedCalls: CallWithTranscript[] = callsData.map((call: any) => ({
         ...call,
-        transcript: call.transcript || null,
+        transcript: Array.isArray(call.transcript) && call.transcript.length > 0 ? call.transcript[0] : null,
         insights: Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null,
         hasEmbeddings: callIdToHasEmbeddings.has(call.id),
         qaScore: Array.isArray(call.qaScore) && call.qaScore.length > 0 ? call.qaScore[0] : null,
       }))
+
+      console.log('Sample transformed call:', transformedCalls[0])
+      console.log('Transformed insights:', transformedCalls[0]?.insights)
+      console.log('Has embeddings:', transformedCalls[0]?.hasEmbeddings)
 
       setCalls(transformedCalls)
     } catch (error) {
@@ -605,13 +615,24 @@ export default function EnhancedLibraryPage() {
             {(() => {
               // Use same counting method as Analytics API
               if (!rawCallsData || rawCallsData.length === 0) {
+                console.log('No raw calls data available')
                 return 0
               }
-              const insightsCallIds = new Set(
-                rawCallsData
-                  .filter((c) => c.insights && Array.isArray(c.insights) && c.insights.length > 0)
-                  .map((c) => c.id)
-              )
+              
+              const callsWithInsights = rawCallsData.filter((c) => {
+                const hasInsights = c.insights && Array.isArray(c.insights) && c.insights.length > 0
+                if (hasInsights) {
+                  console.log('Call with insights:', c.id, c.insights)
+                }
+                return hasInsights
+              })
+              
+              console.log('Total calls with insights:', callsWithInsights.length)
+              console.log('Calls with insights IDs:', callsWithInsights.map(c => c.id))
+              
+              const insightsCallIds = new Set(callsWithInsights.map((c) => c.id))
+              console.log('Unique insights count:', insightsCallIds.size)
+              
               return insightsCallIds.size
             })()}
           </div>
