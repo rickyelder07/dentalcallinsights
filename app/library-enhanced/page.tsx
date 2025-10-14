@@ -32,6 +32,7 @@ export default function EnhancedLibraryPage() {
   const supabase = createBrowserClient()
   
   const [calls, setCalls] = useState<CallWithTranscript[]>([])
+  const [rawCallsData, setRawCallsData] = useState<any[]>([]) // Store raw data for accurate counting
   const [filteredCalls, setFilteredCalls] = useState<CallWithTranscript[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -129,6 +130,9 @@ export default function EnhancedLibraryPage() {
         .in('call_id', callIds)
       
       const callIdToHasEmbeddings = new Set<string>((embeddingRows || []).map((r: any) => r.call_id))
+
+      // Store raw data for accurate counting
+      setRawCallsData(callsData)
 
       // Transform data
       const transformedCalls: CallWithTranscript[] = callsData.map((call: any) => ({
@@ -598,7 +602,7 @@ export default function EnhancedLibraryPage() {
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-purple-600">
-            {calls.filter((c) => c.insights && c.insights !== null).length}
+            {rawCallsData.filter((c) => c.insights && Array.isArray(c.insights) && c.insights.length > 0).length}
           </div>
           <div className="text-sm text-gray-600">With Insights</div>
         </div>
