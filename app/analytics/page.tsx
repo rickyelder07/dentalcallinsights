@@ -48,6 +48,9 @@ export default function AnalyticsPage() {
   const [sentimentFilter, setSentimentFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [directionFilter, setDirectionFilter] = useState<string>('all')
+  const [sourceNumberFilter, setSourceNumberFilter] = useState<string>('')
+  const [durationMin, setDurationMin] = useState<string>('')
+  const [durationMax, setDurationMax] = useState<string>('')
 
   useEffect(() => {
     fetchAnalytics()
@@ -57,7 +60,7 @@ export default function AnalyticsPage() {
     if (showCalls) {
       fetchFilteredCalls()
     }
-  }, [showCalls, dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter])
+  }, [showCalls, dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, durationMin, durationMax])
 
   useEffect(() => {
     if (hasActiveFilters()) {
@@ -68,7 +71,7 @@ export default function AnalyticsPage() {
       setFilteredSentiment(null)
       setFilteredPerformance(null)
     }
-  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, overview, sentiment, performance])
+  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, durationMin, durationMax, overview, sentiment, performance])
 
   const fetchAnalytics = async (forceRefresh = false) => {
     try {
@@ -159,6 +162,15 @@ export default function AnalyticsPage() {
       if (directionFilter !== 'all') {
         query = query.eq('call_direction', directionFilter)
       }
+      if (sourceNumberFilter) {
+        query = query.ilike('source_number', `%${sourceNumberFilter}%`)
+      }
+      if (durationMin) {
+        query = query.gte('call_duration_seconds', parseInt(durationMin))
+      }
+      if (durationMax) {
+        query = query.lte('call_duration_seconds', parseInt(durationMax))
+      }
 
       const { data, error } = await query
 
@@ -199,11 +211,15 @@ export default function AnalyticsPage() {
     setSentimentFilter('all')
     setStatusFilter('all')
     setDirectionFilter('all')
+    setSourceNumberFilter('')
+    setDurationMin('')
+    setDurationMax('')
   }
 
   const hasActiveFilters = () => {
     return dateRangeStart || dateRangeEnd || sentimentFilter !== 'all' || 
-           statusFilter !== 'all' || directionFilter !== 'all'
+           statusFilter !== 'all' || directionFilter !== 'all' || 
+           sourceNumberFilter || durationMin || durationMax
   }
 
   const computeFilteredAnalytics = () => {
@@ -628,6 +644,44 @@ export default function AnalyticsPage() {
                 <option value="Inbound">Inbound</option>
                 <option value="Outbound">Outbound</option>
               </select>
+            </div>
+            
+            {/* Source Number Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Source Number</label>
+              <input
+                type="text"
+                value={sourceNumberFilter}
+                onChange={(e) => setSourceNumberFilter(e.target.value)}
+                placeholder="Search by source number..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* Duration Min Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Min Duration (seconds)</label>
+              <input
+                type="number"
+                value={durationMin}
+                onChange={(e) => setDurationMin(e.target.value)}
+                placeholder="e.g. 30"
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
+            
+            {/* Duration Max Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Max Duration (seconds)</label>
+              <input
+                type="number"
+                value={durationMax}
+                onChange={(e) => setDurationMax(e.target.value)}
+                placeholder="e.g. 300"
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
             </div>
           </div>
 
