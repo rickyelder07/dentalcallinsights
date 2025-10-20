@@ -9,7 +9,7 @@
 -- - original_text, corrected_text (for manual corrections)
 -- 
 -- The application expects:
--- - find_text, replace_text (for user-managed correction rules)
+-- - find_text, replace_text (for user-managed correction rules) 
 -- - is_regex, case_sensitive, priority (for rule configuration)
 --
 -- We'll drop the old table and create a new one with the correct structure.
