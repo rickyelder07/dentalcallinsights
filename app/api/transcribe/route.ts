@@ -430,6 +430,29 @@ async function processTranscription(
       timestamps: timestamps.length,
     })
 
+    // Generate embeddings automatically
+    try {
+      console.log(`Generating embeddings for call ${callId}`)
+      
+      const { generateAutomaticEmbedding } = await import('@/lib/auto-embeddings')
+      
+      const result = await generateAutomaticEmbedding(
+        callId,
+        userId,
+        correctedText,
+        'transcript'
+      )
+      
+      if (result.success) {
+        console.log(`Embedding ${result.cached ? 'cached' : 'generated'} for ${callId}`)
+      } else {
+        console.error(`Failed to generate embedding for ${callId}:`, result.error)
+      }
+    } catch (embeddingError) {
+      console.error(`Error generating embedding for ${callId}:`, embeddingError)
+      // Don't fail the transcription if embedding generation fails
+    }
+
     // Update job as completed
     await supabase
       .from('transcription_jobs')

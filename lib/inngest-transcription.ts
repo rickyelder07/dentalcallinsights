@@ -190,7 +190,34 @@ export const transcribeCall = inngest.createFunction(
       return transcript
     })
     
-    // Step 6: Send completion event
+    // Step 6: Generate embeddings automatically
+    await step.run('generate-embeddings', async () => {
+      console.log(`Generating embeddings for ${callId}`)
+      
+      try {
+        const { generateAutomaticEmbedding } = await import('@/lib/auto-embeddings')
+        
+        const result = await generateAutomaticEmbedding(
+          callId,
+          userId,
+          correctedText,
+          'transcript'
+        )
+        
+        if (result.success) {
+          console.log(`Embedding ${result.cached ? 'cached' : 'generated'} for ${callId}`)
+        } else {
+          console.error(`Failed to generate embedding for ${callId}:`, result.error)
+        }
+        
+        return result
+      } catch (error) {
+        console.error(`Error generating embedding for ${callId}:`, error)
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+      }
+    })
+    
+    // Step 7: Send completion event
     await step.run('send-completion-event', async () => {
       await markTranscriptionComplete(
         callId,
