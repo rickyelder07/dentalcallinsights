@@ -115,7 +115,7 @@ export async function generateAutomaticEmbedding(
     
     console.log(`Saving embedding for call ${callId} with content length: ${finalContent.length}`)
     
-    // Save embedding to database
+    // Save embedding to database (using current schema)
     const { data: savedEmbedding, error: upsertError } = await supabase
       .from('embeddings')
       .upsert({
@@ -123,12 +123,7 @@ export async function generateAutomaticEmbedding(
         user_id: userId,
         content: finalContent,
         embedding: JSON.stringify(embeddingResult.embedding),
-        embedding_model: 'text-embedding-3-small',
-        embedding_version: 1,
         content_type: contentType,
-        content_hash: contentHash,
-        token_count: embeddingResult.tokenCount || 0,
-        generated_at: new Date().toISOString(),
       }, {
         onConflict: 'call_id,content_type'
       })
