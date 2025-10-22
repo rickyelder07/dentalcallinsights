@@ -114,8 +114,18 @@ export async function generateAutomaticEmbedding(
     }
     
     console.log(`Saving embedding for call ${callId} with content length: ${finalContent.length}`)
+    console.log(`Content preview: ${finalContent.substring(0, 200)}...`)
     
-    // Save embedding to database (using current schema)
+    // Double-check content is not null before database operation
+    if (!finalContent || finalContent.trim().length === 0) {
+      console.error(`CRITICAL: finalContent is null or empty before database save for call ${callId}`)
+      return {
+        success: false,
+        error: 'Content is null or empty before database save',
+      }
+    }
+    
+    // Save embedding to database (using full schema)
     const { data: savedEmbedding, error: upsertError } = await supabase
       .from('embeddings')
       .upsert({
@@ -123,7 +133,12 @@ export async function generateAutomaticEmbedding(
         user_id: userId,
         content: finalContent,
         embedding: JSON.stringify(embeddingResult.embedding),
+        embedding_model: 'text-embedding-3-small',
+        embedding_version: 1,
         content_type: contentType,
+        content_hash: contentHash,
+        token_count: embeddingResult.tokenCount || 0,
+        generated_at: new Date().toISOString(),
       }, {
         onConflict: 'call_id,content_type'
       })
