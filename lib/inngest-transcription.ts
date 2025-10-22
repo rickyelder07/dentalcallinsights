@@ -202,6 +202,15 @@ export const transcribeCall = inngest.createFunction(
         // Use correctedText if available, otherwise fall back to raw transcript
         const textToEmbed = correctedText || transcriptionResult.text
         
+        console.log(`Text to embed for call ${callId}:`, {
+          correctedText: correctedText ? correctedText.substring(0, 100) + '...' : 'null',
+          correctedTextLength: correctedText?.length || 0,
+          transcriptionResultText: transcriptionResult.text ? transcriptionResult.text.substring(0, 100) + '...' : 'null',
+          transcriptionResultTextLength: transcriptionResult.text?.length || 0,
+          finalTextToEmbed: textToEmbed ? textToEmbed.substring(0, 100) + '...' : 'null',
+          finalTextToEmbedLength: textToEmbed?.length || 0
+        })
+        
         const result = await generateAutomaticEmbedding(
           callId,
           userId,

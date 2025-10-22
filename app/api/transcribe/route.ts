@@ -441,6 +441,15 @@ async function processTranscription(
       // Use correctedText if available, otherwise fall back to raw transcript
       const textToEmbed = correctedText || whisperResponse.text
       
+      console.log(`Text to embed for call ${callId}:`, {
+        correctedText: correctedText ? correctedText.substring(0, 100) + '...' : 'null',
+        correctedTextLength: correctedText?.length || 0,
+        whisperResponseText: whisperResponse.text ? whisperResponse.text.substring(0, 100) + '...' : 'null',
+        whisperResponseTextLength: whisperResponse.text?.length || 0,
+        finalTextToEmbed: textToEmbed ? textToEmbed.substring(0, 100) + '...' : 'null',
+        finalTextToEmbedLength: textToEmbed?.length || 0
+      })
+      
       const result = await generateAutomaticEmbedding(
         callId,
         userId,

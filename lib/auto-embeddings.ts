@@ -41,12 +41,27 @@ export async function generateAutomaticEmbedding(
   try {
     const supabase = createAdminClient()
     
-    // Validate input
-    if (!transcriptText || transcriptText.trim().length === 0) {
-      console.error(`Invalid transcript text for call ${callId}:`, { transcriptText, type: typeof transcriptText })
+    // Debug logging
+    console.log(`generateAutomaticEmbedding called for call ${callId}:`, {
+      transcriptText: transcriptText ? transcriptText.substring(0, 100) + '...' : 'null',
+      transcriptTextLength: transcriptText?.length || 0,
+      transcriptTextType: typeof transcriptText,
+      userId,
+      contentType
+    })
+    
+    // Validate input - more robust check
+    if (!transcriptText || typeof transcriptText !== 'string' || transcriptText.trim().length === 0) {
+      console.error(`Invalid transcript text for call ${callId}:`, { 
+        transcriptText, 
+        type: typeof transcriptText,
+        length: transcriptText?.length || 0,
+        isNull: transcriptText === null,
+        isUndefined: transcriptText === undefined
+      })
       return {
         success: false,
-        error: 'Transcript text is empty or null',
+        error: 'Transcript text is empty, null, or not a string',
       }
     }
     
@@ -84,14 +99,21 @@ export async function generateAutomaticEmbedding(
     // Calculate cost
     const cost = calculateEmbeddingCost(embeddingResult.tokenCount || 0)
     
-    // Validate content before saving
-    if (!transcriptText || transcriptText.trim().length === 0) {
-      console.error(`Content is null or empty for call ${callId}`)
+    // Final validation before saving
+    const finalContent = transcriptText?.trim()
+    if (!finalContent || finalContent.length === 0) {
+      console.error(`Final content validation failed for call ${callId}:`, {
+        transcriptText,
+        finalContent,
+        length: finalContent?.length || 0
+      })
       return {
         success: false,
-        error: 'Content is null or empty',
+        error: 'Content is null or empty after processing',
       }
     }
+    
+    console.log(`Saving embedding for call ${callId} with content length: ${finalContent.length}`)
     
     // Save embedding to database
     const { data: savedEmbedding, error: upsertError } = await supabase
@@ -99,7 +121,7 @@ export async function generateAutomaticEmbedding(
       .upsert({
         call_id: callId,
         user_id: userId,
-        content: transcriptText.trim(),
+        content: finalContent,
         embedding: JSON.stringify(embeddingResult.embedding),
         embedding_model: 'text-embedding-3-small',
         embedding_version: 1,
