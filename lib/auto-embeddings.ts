@@ -43,9 +43,10 @@ export async function generateAutomaticEmbedding(
     
     // Validate input
     if (!transcriptText || transcriptText.trim().length === 0) {
+      console.error(`Invalid transcript text for call ${callId}:`, { transcriptText, type: typeof transcriptText })
       return {
         success: false,
-        error: 'Transcript text is empty',
+        error: 'Transcript text is empty or null',
       }
     }
     
@@ -83,13 +84,22 @@ export async function generateAutomaticEmbedding(
     // Calculate cost
     const cost = calculateEmbeddingCost(embeddingResult.tokenCount || 0)
     
+    // Validate content before saving
+    if (!transcriptText || transcriptText.trim().length === 0) {
+      console.error(`Content is null or empty for call ${callId}`)
+      return {
+        success: false,
+        error: 'Content is null or empty',
+      }
+    }
+    
     // Save embedding to database
     const { data: savedEmbedding, error: upsertError } = await supabase
       .from('embeddings')
       .upsert({
         call_id: callId,
         user_id: userId,
-        content: transcriptText,
+        content: transcriptText.trim(),
         embedding: JSON.stringify(embeddingResult.embedding),
         embedding_model: 'text-embedding-3-small',
         embedding_version: 1,

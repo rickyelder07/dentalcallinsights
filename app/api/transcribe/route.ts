@@ -433,13 +433,18 @@ async function processTranscription(
     // Generate embeddings automatically
     try {
       console.log(`Generating embeddings for call ${callId}`)
+      console.log(`Corrected text length: ${correctedText?.length || 0}`)
+      console.log(`Corrected text preview: ${correctedText?.substring(0, 100) || 'null'}`)
       
       const { generateAutomaticEmbedding } = await import('@/lib/auto-embeddings')
+      
+      // Use correctedText if available, otherwise fall back to raw transcript
+      const textToEmbed = correctedText || whisperResponse.text
       
       const result = await generateAutomaticEmbedding(
         callId,
         userId,
-        correctedText,
+        textToEmbed,
         'transcript'
       )
       
