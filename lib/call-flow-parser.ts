@@ -26,13 +26,22 @@ export function parseNewPatientStatus(
   callFlow: string | null | undefined,
   direction: string | null | undefined
 ): boolean {
+  // Debug logging to troubleshoot new patient detection
+  console.log('🔍 parseNewPatientStatus called:', {
+    direction,
+    hasCallFlow: !!callFlow,
+    callFlowPreview: callFlow ? callFlow.substring(0, 100) : 'null',
+  })
+
   // Only inbound calls can be new patients
   if (!direction || direction.toLowerCase() !== 'inbound') {
+    console.log('  ❌ Not inbound - direction:', direction)
     return false
   }
 
   // Need call flow data
   if (!callFlow) {
+    console.log('  ❌ No call flow data')
     return false
   }
 
@@ -40,17 +49,25 @@ export function parseNewPatientStatus(
     // Extract all "dialed:X" patterns
     const dialedPattern = /dialed:(\d+)/g
     const matches = Array.from(callFlow.matchAll(dialedPattern))
+    const dialedValues = matches.map(m => m[1])
+
+    console.log('  📊 Dialed values found:', dialedValues)
 
     // Need at least 2 dialed entries
     if (matches.length < 2) {
+      console.log('  ❌ Not enough dialed entries (need 2, found', matches.length, ')')
       return false
     }
 
     // Check the second "dialed:" value
     const secondDialedValue = matches[1][1]
-    return secondDialedValue === '1'
+    const isNewPatient = secondDialedValue === '1'
+    
+    console.log('  ✅ Result:', isNewPatient ? 'NEW PATIENT' : 'EXISTING PATIENT', '(second dialed:', secondDialedValue, ')')
+    
+    return isNewPatient
   } catch (error) {
-    console.error('Error parsing call flow for new patient status:', error)
+    console.error('  ⚠️ Error parsing call flow for new patient status:', error)
     return false
   }
 }

@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
           callId = updatedCall?.id || null
         } else {
           // Create new database record without audio file
+          console.log('📝 Creating new call record (CSV only):', csvRow.call_time)
           const isNewPatient = parseNewPatientStatus(csvRow.call_flow, csvRow.direction)
+          console.log('   is_new_patient will be set to:', isNewPatient)
           
           const { data: callData, error: dbError } = await supabase
             .from('calls')
