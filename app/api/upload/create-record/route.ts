@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { parseNewPatientStatus } from '@/lib/call-flow-parser'
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
 
     if (existingCall) {
       // Update existing record
+      console.log('📝 Updating existing call record (create-record route):', filename)
+      const isNewPatient = parseNewPatientStatus(callFlow, direction)
+      console.log('   is_new_patient will be set to:', isNewPatient)
+      
       const { data: updatedCall, error: updateError } = await supabase
         .from('calls')
         .update({
@@ -81,11 +86,16 @@ export async function POST(request: NextRequest) {
           disposition: disposition,
           time_to_answer_seconds: timeToAnswerSeconds,
           call_flow: callFlow,
+          is_new_patient: isNewPatient,
           updated_at: new Date().toISOString(),
         })
         .eq('id', existingCall.id)
-        .select('id')
+        .select('id, is_new_patient')
         .single()
+      
+      if (updatedCall) {
+        console.log('   ✅ Record updated with is_new_patient =', updatedCall.is_new_patient)
+      }
 
       if (updateError) {
         return NextResponse.json({
@@ -97,30 +107,43 @@ export async function POST(request: NextRequest) {
       callId = updatedCall?.id || null
     } else {
       // Create new database record
+      console.log('📝 Creating new call record (create-record route):', filename)
+      const isNewPatient = parseNewPatientStatus(callFlow, direction)
+      console.log('   is_new_patient will be set to:', isNewPatient)
+      
+      const insertPayload = {
+        user_id: user.id,
+        filename: filename,
+        audio_path: storagePath,
+        file_size: fileSize,
+        file_type: fileType,
+        upload_status: 'completed',
+        call_time: callTime,
+        call_direction: direction,
+        source_number: sourceNumber,
+        source_name: sourceName,
+        source_extension: sourceExtension,
+        destination_number: destinationNumber,
+        destination_extension: destinationExtension,
+        call_duration_seconds: durationSeconds ? parseInt(durationSeconds) : null,
+        disposition: disposition,
+        time_to_answer_seconds: timeToAnswerSeconds,
+        call_flow: callFlow,
+        is_new_patient: isNewPatient,
+        metadata: {},
+      }
+      
+      console.log('   📦 Insert payload is_new_patient:', insertPayload.is_new_patient, '(type:', typeof insertPayload.is_new_patient, ')')
+      
       const { data: newCall, error: dbError } = await supabase
         .from('calls')
-        .insert({
-          user_id: user.id,
-          filename: filename,
-          audio_path: storagePath,
-          file_size: fileSize,
-          file_type: fileType,
-          upload_status: 'completed',
-          call_time: callTime,
-          call_direction: direction,
-          source_number: sourceNumber,
-          source_name: sourceName,
-          source_extension: sourceExtension,
-          destination_number: destinationNumber,
-          destination_extension: destinationExtension,
-          call_duration_seconds: durationSeconds ? parseInt(durationSeconds) : null,
-          disposition: disposition,
-          time_to_answer_seconds: timeToAnswerSeconds,
-          call_flow: callFlow,
-          metadata: {},
-        })
-        .select('id')
+        .insert(insertPayload)
+        .select('id, is_new_patient')
         .single()
+      
+      if (newCall) {
+        console.log('   ✅ Record created with is_new_patient =', newCall.is_new_patient)
+      }
 
       if (dbError) {
         return NextResponse.json({
