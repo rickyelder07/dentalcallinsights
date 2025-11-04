@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
 
         if (existingCall) {
           // Update existing record
+          const isNewPatient = parseNewPatientStatus(csvRow.call_flow, csvRow.direction)
+          
           const { data: updatedCall, error: updateError } = await supabase
             .from('calls')
             .update({
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest) {
               disposition: csvRow.disposition,
               time_to_answer_seconds: csvRow.time_to_answer_seconds,
               call_flow: csvRow.call_flow,
+              is_new_patient: isNewPatient,
               updated_at: new Date().toISOString(),
             })
             .eq('id', existingCall.id)
