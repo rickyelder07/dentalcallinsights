@@ -49,6 +49,8 @@ export default function AnalyticsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [directionFilter, setDirectionFilter] = useState<string>('all')
   const [sourceNumberFilter, setSourceNumberFilter] = useState<string>('')
+  const [sourceExtensionFilter, setSourceExtensionFilter] = useState<string>('all')
+  const [newPatientFilter, setNewPatientFilter] = useState<string>('all')
   const [durationMin, setDurationMin] = useState<string>('')
   const [durationMax, setDurationMax] = useState<string>('')
 
@@ -57,10 +59,12 @@ export default function AnalyticsPage() {
   }, [])
 
   useEffect(() => {
-    if (showCalls) {
+    // Always fetch filtered calls when filters change, not just when showCalls is true
+    // This ensures analytics data is updated based on filters
+    if (hasActiveFilters()) {
       fetchFilteredCalls()
     }
-  }, [showCalls, dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, durationMin, durationMax])
+  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, sourceExtensionFilter, newPatientFilter, durationMin, durationMax])
 
   useEffect(() => {
     if (hasActiveFilters()) {
@@ -71,7 +75,7 @@ export default function AnalyticsPage() {
       setFilteredSentiment(null)
       setFilteredPerformance(null)
     }
-  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, durationMin, durationMax, overview, sentiment, performance])
+  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, sourceExtensionFilter, newPatientFilter, durationMin, durationMax, overview, sentiment, performance])
 
   const fetchAnalytics = async (forceRefresh = false) => {
     try {
@@ -165,6 +169,9 @@ export default function AnalyticsPage() {
       if (sourceNumberFilter) {
         query = query.ilike('source_number', `%${sourceNumberFilter}%`)
       }
+      if (sourceExtensionFilter !== 'all') {
+        query = query.eq('source_extension', sourceExtensionFilter)
+      }
       if (durationMin) {
         query = query.gte('call_duration_seconds', parseInt(durationMin))
       }
@@ -197,6 +204,13 @@ export default function AnalyticsPage() {
         })
       }
 
+      if (newPatientFilter !== 'all') {
+        const filterValue = newPatientFilter === 'new'
+        filtered = filtered.filter((call: any) => {
+          return call.is_new_patient === filterValue
+        })
+      }
+
       setFilteredCalls(filtered)
     } catch (error) {
       console.error('Error fetching filtered calls:', error)
@@ -212,6 +226,8 @@ export default function AnalyticsPage() {
     setStatusFilter('all')
     setDirectionFilter('all')
     setSourceNumberFilter('')
+    setSourceExtensionFilter('all')
+    setNewPatientFilter('all')
     setDurationMin('')
     setDurationMax('')
   }
@@ -219,7 +235,7 @@ export default function AnalyticsPage() {
   const hasActiveFilters = () => {
     return dateRangeStart || dateRangeEnd || sentimentFilter !== 'all' || 
            statusFilter !== 'all' || directionFilter !== 'all' || 
-           sourceNumberFilter || durationMin || durationMax
+           sourceNumberFilter || sourceExtensionFilter !== 'all' || newPatientFilter !== 'all' || durationMin || durationMax
   }
 
   const computeFilteredAnalytics = () => {
@@ -656,6 +672,35 @@ export default function AnalyticsPage() {
                 placeholder="Search by source number..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
+            </div>
+            
+            {/* Source Extension Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Source Extension</label>
+              <select
+                value={sourceExtensionFilter}
+                onChange={(e) => setSourceExtensionFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="all">All Extensions</option>
+                {Array.from(new Set(filteredCalls.map(c => c.source_extension).filter(Boolean))).sort().map(ext => (
+                  <option key={ext} value={ext}>{ext}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* New Patient Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">New Patient</label>
+              <select
+                value={newPatientFilter}
+                onChange={(e) => setNewPatientFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="all">All Calls</option>
+                <option value="new">New Patients</option>
+                <option value="existing">Existing Patients</option>
+              </select>
             </div>
             
             {/* Duration Min Filter */}

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { SimplifiedCsvParser } from '@/lib/csv-parser-simplified'
+import { parseNewPatientStatus } from '@/lib/call-flow-parser'
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,6 +100,8 @@ export async function POST(request: NextRequest) {
           callId = updatedCall?.id || null
         } else {
           // Create new database record without audio file
+          const isNewPatient = parseNewPatientStatus(csvRow.call_flow, csvRow.direction)
+          
           const { data: callData, error: dbError } = await supabase
             .from('calls')
             .insert({
@@ -119,6 +122,7 @@ export async function POST(request: NextRequest) {
               disposition: csvRow.disposition,
               time_to_answer_seconds: csvRow.time_to_answer_seconds,
               call_flow: csvRow.call_flow,
+              is_new_patient: isNewPatient,
               metadata: {},
             })
             .select('id')

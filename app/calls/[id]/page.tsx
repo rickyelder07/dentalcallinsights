@@ -57,7 +57,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       // Fetch call details
       const { data: callData, error: callError } = await supabase
         .from('calls')
-        .select('id, user_id, filename, audio_path, file_size, file_type, upload_status, call_time, call_direction, source_number, source_name, source_extension, destination_number, destination_extension, call_duration_seconds, disposition, time_to_answer_seconds, call_flow, processing_status, error_message, created_at, updated_at')
+        .select('id, user_id, filename, audio_path, file_size, file_type, upload_status, call_time, call_direction, source_number, source_name, source_extension, destination_number, destination_extension, call_duration_seconds, disposition, time_to_answer_seconds, call_flow, is_new_patient, processing_status, error_message, created_at, updated_at')
         .eq('id', callId)
         .eq('user_id', session.user.id)
         .single()
@@ -344,6 +344,11 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         <div className="flex items-center space-x-4 text-sm text-gray-600">
           {call?.call_time && <span>📅 {formatDate(call.call_time)}</span>}
           {call?.call_direction && <span>📞 {call.call_direction}</span>}
+          {call?.is_new_patient && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-semibold text-xs">
+              🆕 New Patient
+            </span>
+          )}
           {call?.call_duration_seconds && (
             <span>⏱️ {Math.floor(call.call_duration_seconds / 60)}m {call.call_duration_seconds % 60}s</span>
           )}
@@ -530,6 +535,9 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
               <div>
                 <span className="text-gray-600">From:</span>
                 <span className="ml-2 text-gray-900">{call.source_number}</span>
+                {call.source_extension && (
+                  <span className="ml-1 text-gray-600">(Ext: {call.source_extension})</span>
+                )}
                 {call.source_name && (
                   <span className="ml-1 text-gray-600">({call.source_name})</span>
                 )}

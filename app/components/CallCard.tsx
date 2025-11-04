@@ -158,7 +158,7 @@ export default function CallCard({
           {/* Call details */}
           <div className="flex flex-wrap gap-2 mb-2 text-xs text-gray-600">
             {call.source_number && (
-              <span>From: {call.source_number}</span>
+              <span>From: {call.source_number}{call.source_extension && ` (Ext: ${call.source_extension})`}</span>
             )}
             {call.destination_number && (
               <span>To: {call.destination_number}</span>

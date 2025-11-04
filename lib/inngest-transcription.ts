@@ -125,21 +125,57 @@ export const transcribeCall = inngest.createFunction(
       }
     })
     
-    // Step 4: Apply user corrections
+    // Step 4: Translate if Spanish
+    const translationResult = await step.run('translate-spanish', async () => {
+      const detectedLanguage = transcriptionResult.language?.toLowerCase()
+      
+      // Check if language is Spanish
+      if (detectedLanguage === 'es' || detectedLanguage === 'spanish' || detectedLanguage === 'spa') {
+        console.log(`Spanish detected for ${filename}, translating to English...`)
+        
+        try {
+          const { translateSpanishToEnglish } = await import('@/lib/openai')
+          const translatedText = await translateSpanishToEnglish(transcriptionResult.text)
+          console.log(`Translation completed for ${filename}`)
+          
+          return {
+            text: translatedText,
+            wasTranslated: true,
+            originalLanguage: detectedLanguage,
+          }
+        } catch (error) {
+          console.error(`Translation failed for ${filename}, using original Spanish text:`, error)
+          return {
+            text: transcriptionResult.text,
+            wasTranslated: false,
+            originalLanguage: detectedLanguage,
+          }
+        }
+      }
+      
+      // Not Spanish, return original
+      return {
+        text: transcriptionResult.text,
+        wasTranslated: false,
+        originalLanguage: null,
+      }
+    })
+    
+    // Step 5: Apply user corrections
     const correctedText = await step.run('apply-corrections', async () => {
       console.log(`Applying user corrections for ${filename}`)
       
       try {
-        const corrected = await applyUserCorrections(transcriptionResult.text, userId)
+        const corrected = await applyUserCorrections(translationResult.text, userId)
         console.log(`User corrections applied for ${filename}`)
         return corrected
       } catch (error) {
         console.warn(`Failed to apply corrections for ${filename}, using original text:`, error)
-        return transcriptionResult.text
+        return translationResult.text
       }
     })
     
-    // Step 5: Save results to database
+    // Step 6: Save results to database
     const saveResult = await step.run('save-results', async () => {
       console.log(`Saving transcription results for ${callId}`)
       
@@ -157,11 +193,13 @@ export const transcribeCall = inngest.createFunction(
           transcript: correctedText, // Legacy field
           transcription_status: 'completed',
           confidence_score: transcriptionResult.confidenceScore,
-          language: transcriptionResult.language,
+          language: translationResult.wasTranslated ? 'en' : transcriptionResult.language,
           timestamps: transcriptionResult.timestamps,
           processing_completed_at: new Date().toISOString(),
           processing_duration_seconds: processingDuration,
           error_message: null,
+          was_translated: translationResult.wasTranslated,
+          original_language: translationResult.originalLanguage,
         }, {
           onConflict: 'call_id',
           ignoreDuplicates: false,
@@ -190,7 +228,7 @@ export const transcribeCall = inngest.createFunction(
       return transcript
     })
     
-    // Step 6: Generate embeddings automatically
+    // Step 7: Generate embeddings automatically
     await step.run('generate-embeddings', async () => {
       console.log(`Generating embeddings for ${callId}`)
       console.log(`Corrected text length: ${correctedText?.length || 0}`)

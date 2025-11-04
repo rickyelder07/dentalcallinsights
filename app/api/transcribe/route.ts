@@ -394,9 +394,28 @@ async function processTranscription(
       : []
     const processingDuration = Math.floor((Date.now() - startTime) / 1000)
 
-    // Apply user-managed corrections to raw transcript
+    // Translate if Spanish
+    let transcriptText = whisperResponse.text
+    let wasTranslated = false
+    let originalLanguage = null
+    const detectedLanguage = (whisperResponse.language || options.language || 'en').toLowerCase()
+    
+    if (detectedLanguage === 'es' || detectedLanguage === 'spanish' || detectedLanguage === 'spa') {
+      console.log(`Spanish detected for call ${callId}, translating to English...`)
+      try {
+        const { translateSpanishToEnglish } = await import('@/lib/openai')
+        transcriptText = await translateSpanishToEnglish(whisperResponse.text)
+        wasTranslated = true
+        originalLanguage = detectedLanguage
+        console.log(`Translation completed for call ${callId}`)
+      } catch (error) {
+        console.error(`Translation failed for call ${callId}, using original Spanish text:`, error)
+      }
+    }
+
+    // Apply user-managed corrections to transcript
     const { applyUserCorrections } = await import('@/lib/transcription-corrections')
-    const correctedText = await applyUserCorrections(whisperResponse.text, userId)
+    const correctedText = await applyUserCorrections(transcriptText, userId)
 
     // Update transcript with results - use upsert to ensure it exists
     const { error: transcriptError } = await supabase
@@ -409,11 +428,13 @@ async function processTranscription(
         transcript: correctedText, // Legacy field shows corrected
         transcription_status: 'completed',
         confidence_score: confidenceScore,
-        language: whisperResponse.language || options.language || 'en',
+        language: wasTranslated ? 'en' : (whisperResponse.language || options.language || 'en'),
         timestamps: timestamps,
         processing_completed_at: new Date().toISOString(),
         processing_duration_seconds: processingDuration,
         error_message: null,
+        was_translated: wasTranslated,
+        original_language: originalLanguage,
       }, {
         onConflict: 'call_id',
         ignoreDuplicates: false,

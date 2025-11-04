@@ -474,6 +474,70 @@ export function estimateProcessingTime(durationSeconds: number): number {
 }
 
 // ============================================
+// TRANSLATION FUNCTION
+// ============================================
+
+/**
+ * Translate Spanish text to English using GPT-4o-mini
+ * 
+ * @param spanishText - Text in Spanish to translate
+ * @returns Translated English text
+ * @throws {Error} If translation fails
+ */
+export async function translateSpanishToEnglish(spanishText: string): Promise<string> {
+  // Validate API key
+  const configValidation = validateOpenAIConfig()
+  if (!configValidation.valid) {
+    throw new Error(configValidation.error || 'OpenAI API key not configured')
+  }
+
+  try {
+    const response = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Translate the following Spanish text to English. Maintain the conversational tone and format. Only output the translation, nothing else.',
+          },
+          {
+            role: 'user',
+            content: spanishText,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(
+        errorData.error?.message || `OpenAI API error: ${response.status} ${response.statusText}`
+      )
+    }
+
+    const data = await response.json()
+    const translatedText = data.choices?.[0]?.message?.content
+
+    if (!translatedText) {
+      throw new Error('No translation returned from OpenAI API')
+    }
+
+    return translatedText.trim()
+  } catch (error) {
+    console.error('Translation error:', error)
+    throw new Error(
+      `Failed to translate text: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -485,6 +549,7 @@ export default {
   formatSegmentsToTimestamps,
   estimateTranscriptionCost,
   estimateProcessingTime,
+  translateSpanishToEnglish,
   createTranscriptionError,
   isTranscriptionError,
 }
