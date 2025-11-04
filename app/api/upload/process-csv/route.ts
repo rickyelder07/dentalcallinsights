@@ -107,31 +107,39 @@ export async function POST(request: NextRequest) {
           const isNewPatient = parseNewPatientStatus(csvRow.call_flow, csvRow.direction)
           console.log('   is_new_patient will be set to:', isNewPatient)
           
+          const insertPayload = {
+            user_id: user.id,
+            filename: 'No Call Recording',
+            audio_path: '', // No audio path
+            file_size: null,
+            file_type: null,
+            upload_status: 'completed',
+            call_time: csvRow.call_time,
+            call_direction: csvRow.direction,
+            source_number: csvRow.source_number,
+            source_name: csvRow.source_name,
+            source_extension: csvRow.source_extension,
+            destination_number: csvRow.destination_number,
+            destination_extension: csvRow.destination_extension,
+            call_duration_seconds: csvRow.duration_seconds,
+            disposition: csvRow.disposition,
+            time_to_answer_seconds: csvRow.time_to_answer_seconds,
+            call_flow: csvRow.call_flow,
+            is_new_patient: isNewPatient,
+            metadata: {},
+          }
+          
+          console.log('   📦 Insert payload is_new_patient:', insertPayload.is_new_patient, '(type:', typeof insertPayload.is_new_patient, ')')
+          
           const { data: callData, error: dbError } = await supabase
             .from('calls')
-            .insert({
-              user_id: user.id,
-              filename: 'No Call Recording',
-              audio_path: '', // No audio path
-              file_size: null,
-              file_type: null,
-              upload_status: 'completed',
-              call_time: csvRow.call_time,
-              call_direction: csvRow.direction,
-              source_number: csvRow.source_number,
-              source_name: csvRow.source_name,
-              source_extension: csvRow.source_extension,
-              destination_number: csvRow.destination_number,
-              destination_extension: csvRow.destination_extension,
-              call_duration_seconds: csvRow.duration_seconds,
-              disposition: csvRow.disposition,
-              time_to_answer_seconds: csvRow.time_to_answer_seconds,
-              call_flow: csvRow.call_flow,
-              is_new_patient: isNewPatient,
-              metadata: {},
-            })
-            .select('id')
+            .insert(insertPayload)
+            .select('id, is_new_patient')
             .single()
+          
+          if (callData) {
+            console.log('   ✅ Record created with is_new_patient =', callData.is_new_patient)
+          }
 
           if (dbError) {
             uploadErrors.push(`Failed to create record for call without recording: ${dbError.message}`)
