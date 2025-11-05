@@ -303,6 +303,16 @@ export default function EnhancedLibraryPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const paginatedCalls = filteredCalls.slice(startIndex, endIndex)
+  
+  // Debug log
+  console.log('📄 Pagination:', {
+    totalCalls: filteredCalls.length,
+    itemsPerPage,
+    currentPage,
+    totalPages,
+    showing: `${startIndex + 1}-${Math.min(endIndex, filteredCalls.length)}`,
+    paginatedCount: paginatedCalls.length
+  })
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
