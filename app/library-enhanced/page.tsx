@@ -15,6 +15,7 @@ import BulkActions from '../components/BulkActions'
 import ExportModal from '../components/ExportModal'
 import CallScoringPanel from '../components/CallScoringPanel'
 import BulkTranscriptionProgress from '../components/BulkTranscriptionProgress'
+import BulkInsightsProgress from '../components/BulkInsightsProgress'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { FilterConfig } from '@/types/filters'
@@ -65,6 +66,8 @@ export default function EnhancedLibraryPage() {
   const [processingStatus, setProcessingStatus] = useState<string>('')
   const [showTranscriptionProgress, setShowTranscriptionProgress] = useState(false)
   const [transcriptionJobs, setTranscriptionJobs] = useState<any[]>([])
+  const [showInsightsProgress, setShowInsightsProgress] = useState(false)
+  const [insightsJobs, setInsightsJobs] = useState<any[]>([])
   
   // UI state
   const [showFilters, setShowFilters] = useState(false)
@@ -312,6 +315,34 @@ export default function EnhancedLibraryPage() {
     setTranscriptionJobs([])
   }
 
+  // Handle insights progress completion
+  const handleInsightsComplete = (results: { success: number; failed: number; cached: number; errors: string[] }) => {
+    setShowInsightsProgress(false)
+    setInsightsJobs([])
+    
+    // Show results
+    let message = `AI Insights Generation Complete!\n\n`
+    message += `✓ Generated: ${results.success} call(s)\n`
+    if (results.cached > 0) {
+      message += `⚡ Cached: ${results.cached} call(s) (no API cost)\n`
+    }
+    if (results.failed > 0) {
+      message += `✗ Failed: ${results.failed} call(s)\n\nErrors:\n${results.errors.join('\n')}`
+    }
+    
+    alert(message)
+    
+    // Refresh calls to show new insights
+    clearSelection()
+    fetchCalls()
+  }
+
+  // Handle insights progress cancellation
+  const handleInsightsCancel = () => {
+    setShowInsightsProgress(false)
+    setInsightsJobs([])
+  }
+
   // Bulk operations
   const handleBulkTranscribe = async () => {
     const callsToTranscribe = filteredCalls.filter((c) => 
@@ -429,29 +460,72 @@ export default function EnhancedLibraryPage() {
       return
     }
 
-    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?`)) {
+    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?\n\nNote: Cached insights will be reused when available.`)) {
       return
     }
 
+    // Initialize jobs
+    const jobs = callsForInsights.map(call => ({
+      id: call.id,
+      callId: call.id,
+      filename: call.filename || 'Unknown',
+      status: 'pending' as const,
+    }))
+
+    setInsightsJobs(jobs)
+    setShowInsightsProgress(true)
     setIsProcessing(true)
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
+      // Process each call sequentially with progress updates
       for (const call of callsForInsights) {
-        await fetch('/api/insights/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ callId: call.id }),
-        })
-      }
+        // Update status to processing
+        if ((window as any).updateInsightsJobStatus) {
+          (window as any).updateInsightsJobStatus(call.id, { status: 'processing' })
+        }
 
-      alert('AI insights generation complete!')
-      clearSelection()
-      setTimeout(fetchCalls, 2000)
+        try {
+          const response = await fetch('/api/insights/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ callId: call.id }),
+          })
+
+          const result = await response.json()
+
+          if (response.ok) {
+            // Update status to completed
+            if ((window as any).updateInsightsJobStatus) {
+              (window as any).updateInsightsJobStatus(call.id, { 
+                status: 'completed',
+                cached: result.cached || false,
+              })
+            }
+          } else {
+            // Update status to failed
+            if ((window as any).updateInsightsJobStatus) {
+              (window as any).updateInsightsJobStatus(call.id, { 
+                status: 'failed',
+                error: result.error || 'Failed to generate insights',
+              })
+            }
+          }
+        } catch (error) {
+          // Update status to failed
+          if ((window as any).updateInsightsJobStatus) {
+            (window as any).updateInsightsJobStatus(call.id, { 
+              status: 'failed',
+              error: error instanceof Error ? error.message : 'Network error',
+            })
+          }
+        }
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -1022,6 +1096,15 @@ export default function EnhancedLibraryPage() {
           jobs={transcriptionJobs}
           onComplete={handleTranscriptionComplete}
           onCancel={handleTranscriptionCancel}
+        />
+      )}
+
+      {/* Bulk Insights Progress */}
+      {showInsightsProgress && (
+        <BulkInsightsProgress
+          jobs={insightsJobs}
+          onComplete={handleInsightsComplete}
+          onCancel={handleInsightsCancel}
         />
       )}
     </div>
