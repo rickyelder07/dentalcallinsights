@@ -71,6 +71,10 @@ export default function EnhancedLibraryPage() {
   
   // UI state
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(50)
 
   useEffect(() => {
     fetchCalls()
@@ -88,6 +92,8 @@ export default function EnhancedLibraryPage() {
 
   useEffect(() => {
     applyAllFilters()
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
   }, [calls, filters, searchQuery, statusFilter, sentimentFilter, dateRangeStart, dateRangeEnd, durationMin, durationMax, directionFilter, sourceNumberFilter, sourceExtensionFilter, newPatientFilter])
 
   const fetchCalls = async () => {
@@ -290,6 +296,22 @@ export default function EnhancedLibraryPage() {
 
   const clearSelection = () => {
     setSelectedCalls(new Set())
+  }
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedCalls = filteredCalls.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1) // Reset to first page
   }
 
   // Handle transcription progress completion
@@ -978,7 +1000,7 @@ export default function EnhancedLibraryPage() {
               <p className="text-gray-600">No calls match your filters</p>
             </div>
           ) : (
-            filteredCalls.map((call) => (
+            paginatedCalls.map((call) => (
               <div key={call.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-3">
                   {/* Checkbox */}
@@ -1071,6 +1093,132 @@ export default function EnhancedLibraryPage() {
             ))
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filteredCalls.length > 0 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-gray-200 rounded-lg p-4">
+            {/* Items per page selector */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-gray-600">Show:</label>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+                <option value={500}>500</option>
+                <option value={1000}>1000</option>
+              </select>
+              <span className="text-sm text-gray-600">
+                per page
+              </span>
+            </div>
+
+            {/* Page info and navigation */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredCalls.length)} of {filteredCalls.length}
+              </span>
+
+              <div className="flex items-center gap-2">
+                {/* Previous button */}
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const pages = []
+                    const maxPagesToShow = 5
+                    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2))
+                    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1)
+                    
+                    // Adjust start if we're near the end
+                    if (endPage - startPage < maxPagesToShow - 1) {
+                      startPage = Math.max(1, endPage - maxPagesToShow + 1)
+                    }
+
+                    // First page + ellipsis
+                    if (startPage > 1) {
+                      pages.push(
+                        <button
+                          key={1}
+                          onClick={() => handlePageChange(1)}
+                          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          1
+                        </button>
+                      )
+                      if (startPage > 2) {
+                        pages.push(
+                          <span key="ellipsis-start" className="px-2 text-gray-500">
+                            ...
+                          </span>
+                        )
+                      }
+                    }
+
+                    // Page numbers
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i)}
+                          className={`px-3 py-1.5 border rounded-lg text-sm font-medium transition-colors ${
+                            currentPage === i
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      )
+                    }
+
+                    // Ellipsis + last page
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(
+                          <span key="ellipsis-end" className="px-2 text-gray-500">
+                            ...
+                          </span>
+                        )
+                      }
+                      pages.push(
+                        <button
+                          key={totalPages}
+                          onClick={() => handlePageChange(totalPages)}
+                          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          {totalPages}
+                        </button>
+                      )
+                    }
+
+                    return pages
+                  })()}
+                </div>
+
+                {/* Next button */}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Export Modal */}
