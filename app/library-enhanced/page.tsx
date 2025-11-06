@@ -563,44 +563,6 @@ export default function EnhancedLibraryPage() {
     }
   }
 
-  const handleBulkGenerateEmbeddings = async () => {
-    const callsForEmbeddings = filteredCalls.filter((c) => 
-      selectedCalls.has(c.id) && 
-      c.transcript?.transcription_status === 'completed'
-    )
-
-    if (callsForEmbeddings.length === 0) {
-      alert('No calls with completed transcripts selected')
-      return
-    }
-
-    if (!confirm(`Generate embeddings for ${callsForEmbeddings.length} call(s)?`)) {
-      return
-    }
-
-    setIsProcessing(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      for (const call of callsForEmbeddings) {
-        await fetch('/api/search/embeddings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ callId: call.id }),
-        })
-      }
-
-      alert('Embeddings generation complete!')
-      clearSelection()
-      setTimeout(fetchCalls, 2000)
-    } finally {
-      setIsProcessing(false)
-    }
-  }
 
   const handleExport = () => {
     if (selectedCalls.size === 0) {
@@ -958,7 +920,6 @@ export default function EnhancedLibraryPage() {
         onClearSelection={clearSelection}
         onBulkTranscribe={handleBulkTranscribe}
         onBulkGenerateInsights={handleBulkGenerateInsights}
-        onBulkGenerateEmbeddings={handleBulkGenerateEmbeddings}
         onExport={handleExport}
       />
 

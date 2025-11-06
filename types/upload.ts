@@ -276,6 +276,7 @@ export interface Call {
   disposition?: string
   time_to_answer_seconds?: number
   call_flow?: string
+  is_new_patient?: boolean
   
   // Metadata
   metadata: Record<string, any>
