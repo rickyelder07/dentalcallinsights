@@ -20,6 +20,7 @@ import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { FilterConfig } from '@/types/filters'
 import { applyFilters, applySorting, getPredefinedFilterPresets, getFilterSummary } from '@/lib/filters'
+import { parseCallTime, formatCallTime } from '@/lib/datetime'
 
 interface CallWithTranscript extends Call {
   transcript?: Transcript | null
@@ -195,17 +196,20 @@ export default function EnhancedLibraryPage() {
 
     // Apply date range filter
     if (dateRangeStart) {
+      const startDate = new Date(dateRangeStart)
       filtered = filtered.filter((call) => {
-        if (!call.call_time) return false
-        return new Date(call.call_time) >= new Date(dateRangeStart)
+        const callDate = parseCallTime(call.call_time)
+        if (!callDate) return false
+        return callDate >= startDate
       })
     }
     if (dateRangeEnd) {
+      const endDate = new Date(dateRangeEnd)
+      endDate.setHours(23, 59, 59, 999) // Include entire end date
       filtered = filtered.filter((call) => {
-        if (!call.call_time) return false
-        const endDate = new Date(dateRangeEnd)
-        endDate.setHours(23, 59, 59, 999) // Include entire end date
-        return new Date(call.call_time) <= endDate
+        const callDate = parseCallTime(call.call_time)
+        if (!callDate) return false
+        return callDate <= endDate
       })
     }
 
@@ -666,6 +670,24 @@ export default function EnhancedLibraryPage() {
               </svg>
               Analytics
             </button>
+            <button
+              onClick={() => router.push('/caller-analytics')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Caller Analytics
+            </button>
+            <button
+              onClick={() => router.push('/call-highlights')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              Call Highlights
+            </button>
           </div>
         </div>
       </div>
@@ -993,13 +1015,7 @@ export default function EnhancedLibraryPage() {
                           {call.filename}
                         </button>
                         <p className="text-xs text-gray-500 mt-1">
-                          {call.call_time && new Date(call.call_time).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit'
-                          })}
+                          {formatCallTime(call.call_time)}
                         </p>
                       </div>
                       {call.call_direction && (

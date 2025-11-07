@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
+import { formatCallTime } from '@/lib/datetime'
 import VectorSearch from '../components/VectorSearch'
 import type {
   AnalyticsOverview,
@@ -784,13 +785,7 @@ export default function AnalyticsPage() {
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 text-sm">{call.filename}</h3>
                       <p className="text-xs text-gray-500 mt-1">
-                        {call.call_time && new Date(call.call_time).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit'
-                        })}
+                        {formatCallTime(call.call_time)}
                       </p>
                       <div className="flex gap-2 mt-2">
                         {call.call_direction && (

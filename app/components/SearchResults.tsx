@@ -7,6 +7,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { SearchResult } from '@/types/embeddings'
+import { formatCallTime } from '@/lib/datetime'
 
 interface SearchResultsProps {
   results: SearchResult[]
@@ -135,16 +136,7 @@ export default function SearchResults({
   }
   
   // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const formatDate = (dateString: string) => formatCallTime(dateString)
   
   // Format duration
   const formatDuration = (seconds?: number) => {

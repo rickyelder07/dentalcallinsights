@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { InsightsRecord } from '@/types/insights'
+import { formatCallTime, formatCallTimeOnly } from '@/lib/datetime'
 
 interface CallCardProps {
   call: Call & {
@@ -30,23 +31,15 @@ export default function CallCard({
   const router = useRouter()
 
   // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'No date'
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString?: string) =>
+    formatCallTime(dateString, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    })
-  }
+    }) || 'No date'
 
   // Format time
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return ''
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
+  const formatTime = (dateString?: string) => formatCallTimeOnly(dateString)
 
   // Format duration
   const formatDuration = (seconds?: number) => {

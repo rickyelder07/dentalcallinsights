@@ -365,6 +365,155 @@ export interface DashboardState {
 }
 
 // ============================================
+// CALLER ANALYTICS TYPES
+// ============================================
+
+/**
+ * Topic count for caller analytics
+ */
+export interface TopicCount {
+  topic: string
+  count: number
+}
+
+/**
+ * Red flag category count
+ */
+export interface RedFlagCategoryCount {
+  category: string
+  count: number
+}
+
+/**
+ * Action priority count
+ */
+export interface ActionPriorityCount {
+  priority: string
+  count: number
+}
+
+/**
+ * Overview data for a single caller/extension
+ */
+export interface CallerOverview {
+  extension: string
+  totalCalls: number
+  sentimentDistribution: {
+    positive: number
+    negative: number
+    neutral: number
+    mixed: number
+  }
+  satisfactionScore: number
+}
+
+/**
+ * Comprehensive performance metrics for a caller
+ */
+export interface CallerPerformanceMetrics {
+  extension: string
+  callVolume: {
+    totalCalls: number
+    avgCallsPerDay: number
+    inboundCount: number
+    outboundCount: number
+  }
+  sentimentAnalysis: {
+    distribution: SentimentDistribution[]
+    avgSatisfactionScore: number
+    positivePercentage: number
+    patientSatisfactionBreakdown: PatientSatisfactionBreakdown
+  }
+  qualityMetrics: {
+    professionalCalls: number
+    needsImprovementCalls: number
+    resolutionRate: number
+    avgCallDuration: number
+    overallAvgDuration: number
+    outcomes: OutcomeDistribution[]
+  }
+  performanceIndicators: {
+    callsWithRedFlags: number
+    redFlagsPercentage: number
+    redFlagCategories: RedFlagCategoryCount[]
+    callsWithActionItems: number
+    actionItemsPercentage: number
+    actionPriorities: ActionPriorityCount[]
+  }
+  patientImpact: {
+    newPatientCalls: number
+    appointmentsScheduled: number
+    appointmentsCancelled: number
+    estimatedRevenue: number
+  }
+  topTopics: TopicCount[]
+  callTrends: TrendDataPoint[]
+}
+
+/**
+ * Caller analytics API response for overview (all extensions)
+ */
+export type CallerOverviewResponse = AnalyticsResponse<CallerOverview[]>
+
+/**
+ * Caller analytics API response for performance (single extension)
+ */
+export type CallerPerformanceResponse = AnalyticsResponse<CallerPerformanceMetrics>
+
+// ============================================
+// CALL HIGHLIGHTS TYPES
+// ============================================
+
+/**
+ * Individual call highlight with performance data
+ */
+export interface CallHighlight {
+  call: any // Full call object with all fields
+  insights: any // Call insights data
+  score?: number // Weighted performance score (0-100)
+  duration: number // Call duration in seconds
+  sentiment: string // Overall sentiment
+  satisfactionScore: number // Satisfaction score (0-100)
+}
+
+/**
+ * Extension performer statistics
+ */
+export interface PerformerStats {
+  extension: string
+  totalCalls: number
+  performanceScore: number // Weighted performance score (0-100)
+  sentimentDistribution: {
+    positive: number
+    negative: number
+    neutral: number
+    mixed: number
+  }
+  avgSatisfactionScore: number
+  positivePercent: number
+  negativePercent: number
+}
+
+/**
+ * Complete call highlights data for a date range
+ */
+export interface CallHighlightsData {
+  longestCalls: CallHighlight[]
+  positiveCallsRanked: CallHighlight[]
+  negativeCalls: CallHighlight[]
+  highestPerformer: PerformerStats | null
+  lowestPerformer: PerformerStats | null
+  newPatientGood: CallHighlight[]
+  newPatientPoor: CallHighlight[]
+  dateRange: { start: string; end: string }
+}
+
+/**
+ * Call highlights API response
+ */
+export type CallHighlightsResponse = AnalyticsResponse<CallHighlightsData>
+
+// ============================================
 // UTILITY TYPES
 // ============================================
 

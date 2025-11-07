@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
+import { formatCallTime } from '@/lib/datetime'
 import { createSignedUrl } from '@/lib/storage'
 import AudioPlayer from '@/app/components/AudioPlayer'
 import TranscriptViewer from '@/app/components/TranscriptViewer'
@@ -264,9 +265,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
   }
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString()
-  }
+  const formatDate = (dateString: string) => formatCallTime(dateString)
 
   if (isLoading) {
     return (

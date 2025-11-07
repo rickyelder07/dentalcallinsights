@@ -146,7 +146,8 @@ export default function ScoreBreakdown({
                 day: 'numeric',
                 year: 'numeric',
                 hour: 'numeric',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'America/Los_Angeles'
               })}
             </span>
           </div>
