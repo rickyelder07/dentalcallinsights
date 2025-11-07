@@ -1,545 +1,545 @@
-# DentalCallInsights
+# DentalCallInsights 🦷📞
 
-Transform dental call recordings into actionable insights with AI-powered transcription, summarization, sentiment analysis, and semantic search.
+<div align="center">
 
-## 🚀 Tech Stack
+**AI-Powered Call Analytics Platform for Dental Practices**
 
-- **Framework:** Next.js 14 (App Router, TypeScript)
-- **Styling:** TailwindCSS
-- **Backend:** Supabase (Auth, Postgres, Storage, pgvector)
-- **AI/ML:** OpenAI (Whisper for transcription, GPT for summaries, embeddings for search)
-- **Deployment:** Vercel
-- **Code Quality:** ESLint, Prettier, TypeScript strict mode
+Transform call recordings into actionable insights with automated transcription, sentiment analysis, and intelligent QA scoring.
 
-## 📋 Features
+[Live Demo](https://dentalcallinsights.vercel.app) • [Documentation](#-documentation) • [Report Bug](https://github.com/rickyelder07/dentalcallinsights/issues)
 
-### ✅ Completed (Milestones 1-2)
-- ✅ User authentication and authorization (email/password)
-- ✅ Row Level Security (RLS) for data isolation
-- ✅ Protected routes with middleware
-- ✅ User profile and account management
-- ✅ Password reset flow
-- ✅ Session persistence and auto-refresh
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres-green)](https://supabase.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange)](https://openai.com/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-### ✅ Completed (Milestone 3)
-- ✅ Audio file upload and storage
-- ✅ CSV upload with direct filename matching
-- ✅ Supabase Storage integration with RLS
-- ✅ Upload validation and error handling
-- ✅ Simplified workflow (no complex matching needed)
-- ✅ User-isolated storage paths
-- ✅ Support for MP3, WAV, M4A, AAC files
-- ✅ Support for calls without recordings ("No Call Recording")
-- ✅ Real-time upload progress tracking
-- ✅ Duplicate prevention with upsert logic
+</div>
 
-### ✅ Completed (Milestone 4)
-- ✅ OpenAI Whisper integration for transcription
-- ✅ Background job processing for transcriptions
-- ✅ Individual call detail pages with audio player
-- ✅ Transcript viewer and editor
-- ✅ Synchronized audio playback with transcript
-- ✅ Enhanced call library with transcript status
-- ✅ Bulk transcription with checkbox selection
-- ✅ Auto-detection of English and Spanish calls
-- ✅ Language display in call library and detail pages
+---
 
-### ✅ Completed (Milestone 5)
-- ✅ GPT-4o integration for AI insights
-- ✅ Call summaries with key points and outcomes
-- ✅ Sentiment analysis (overall, patient satisfaction, staff performance)
-- ✅ Action items with priority and assignee tracking
-- ✅ Red flags and concerns detection
-- ✅ Smart caching to reduce API costs
-- ✅ Call length validation (6+ seconds)
-- ✅ Insights tab in call detail page
-- ✅ Export insights as Text or JSON
-- ✅ Manual regeneration capability
+## 📖 Table of Contents
 
-### ✅ Completed (Milestone 8)
-- ✅ Quality Assurance scoring system with 15 criteria
-- ✅ AI-powered automated scoring using GPT-4o-mini
-- ✅ Manual scoring interface with detailed criteria
-- ✅ QA dashboard with performance metrics
-- ✅ Score trends and analytics
-- ✅ Agent performance tracking
-- ✅ Comprehensive scoring workflow
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Tech Stack](#-tech-stack)
+- [Architecture](#-architecture)
+- [Getting Started](#-getting-started)
+- [Configuration](#-configuration)
+- [Deployment](#-deployment)
+- [Documentation](#-documentation)
+- [Project Structure](#-project-structure)
+- [Performance Considerations](#-performance-considerations)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-## 📚 Documentation
+---
 
-### 🚀 Getting Started
-- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup instructions for new users
-- **[CODE_STRUCTURE.md](CODE_STRUCTURE.md)** - Technical architecture and codebase guide
-- **[FEATURE_GUIDE.md](FEATURE_GUIDE.md)** - Comprehensive user feature documentation
-- **[VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)** - Complete Vercel deployment guide
+## 🎯 Overview
 
-### 🗄️ Database Setup
-- **[migrations/01_core_schema.sql](migrations/01_core_schema.sql)** - Core database schema
-- **[migrations/02_auth_security.sql](migrations/02_auth_security.sql)** - Authentication & security setup
-- **[migrations/03_features.sql](migrations/03_features.sql)** - Core features implementation
-- **[migrations/04_qa_analytics.sql](migrations/04_qa_analytics.sql)** - QA & analytics features
+**DentalCallInsights** is a comprehensive SaaS platform designed to help dental practices maximize the value of their patient phone calls. By leveraging cutting-edge AI technologies, the platform automatically transcribes call recordings, extracts actionable insights, identifies quality issues, and provides data-driven analytics to improve patient communication and operational efficiency.
 
-### 🔧 Technical Documentation
-- **[CODEFLOW.md](CODEFLOW.md)** - Architecture overview and development roadmap
-- **[TRANSCRIPTION_SETUP.md](TRANSCRIPTION_SETUP.md)** - Transcription pipeline setup
-- **[TRANSCRIPTION_CORRECTIONS_FIX.md](TRANSCRIPTION_CORRECTIONS_FIX.md)** - Transcription corrections implementation
-- **[TRANSCRIPTION_DURATION_THRESHOLD.md](TRANSCRIPTION_DURATION_THRESHOLD.md)** - Duration threshold configuration
-- **[AI_SCORING_GUIDE.md](AI_SCORING_GUIDE.md)** - AI-powered QA scoring guide
-- **[AI_SCORING_IMPLEMENTATION.md](AI_SCORING_IMPLEMENTATION.md)** - Technical AI scoring documentation
-- **[AI_SCORING_COMPLETE.md](AI_SCORING_COMPLETE.md)** - AI scoring feature summary
+### Why DentalCallInsights?
 
-## 🏗️ Project Structure
+- **🤖 Automated Intelligence**: Eliminate manual call reviews with AI-powered transcription and analysis
+- **📊 Data-Driven Decisions**: Comprehensive analytics dashboards reveal trends, performance metrics, and opportunities
+- **⚡ Real-Time Processing**: Bulk operations support for processing hundreds of calls simultaneously
+- **🔍 Semantic Search**: Find relevant calls instantly using natural language queries powered by vector embeddings
+- **✅ Quality Assurance**: Automated and manual QA scoring with 15+ evaluation criteria
+- **🔒 Enterprise Security**: Row-level security, encrypted storage, and HIPAA-compliant infrastructure
+
+---
+
+## ✨ Key Features
+
+### 🎙️ **Transcription & AI Analysis**
+- **Automated Transcription**: OpenAI Whisper integration with multi-language support (English/Spanish)
+- **AI-Generated Summaries**: GPT-4 powered call summaries with key points and outcomes
+- **Sentiment Analysis**: Multi-dimensional sentiment tracking (overall, patient satisfaction, staff performance)
+- **Action Items**: Automatic detection and prioritization of follow-up tasks
+- **Red Flag Detection**: Identify compliance issues, negative experiences, and quality concerns
+
+### 📊 **Analytics & Reporting**
+- **Caller Analytics**: Track individual extension performance with detailed metrics
+- **Call Highlights**: Daily performance overview with best/worst calls and top performers
+- **Trend Analysis**: Historical performance tracking with visual trend indicators
+- **New Patient Tracking**: Dedicated analytics for new patient call quality
+- **Custom Metrics**: Weighted scoring algorithms for performance evaluation
+
+### 🔍 **Search & Discovery**
+- **Semantic Search**: Vector-based similarity search across transcripts
+- **Advanced Filtering**: Filter by sentiment, date range, duration, caller, and more
+- **Full-Text Search**: Fast keyword-based search across all call data
+- **Export Capabilities**: Export filtered results as CSV or JSON
+
+### ✅ **Quality Assurance**
+- **15-Criteria Scoring**: Comprehensive QA checklist covering greeting, empathy, compliance, and more
+- **AI-Powered Scoring**: Automated evaluation using GPT-4o-mini
+- **Manual Review**: Human-in-the-loop validation and override capability
+- **Performance Dashboards**: Agent tracking, score trends, and benchmarking
+- **Trend Analysis**: Identify patterns and areas for improvement
+
+### 👥 **User Management**
+- **Secure Authentication**: Email/password authentication via Supabase Auth
+- **Row-Level Security**: Complete data isolation between users
+- **Profile Management**: User settings, password resets, and account management
+- **Session Persistence**: Automatic token refresh and seamless authentication
+
+### 📁 **File Management**
+- **Bulk Upload**: Drag-and-drop CSV + audio file uploads with progress tracking
+- **Format Support**: MP3, WAV, M4A, AAC audio formats
+- **Call-Only Mode**: Support for call data without recordings
+- **Smart Matching**: Automatic filename-based audio-to-call matching
+- **Duplicate Prevention**: Intelligent upsert logic to avoid redundant uploads
+
+---
+
+## 🛠️ Tech Stack
+
+### **Frontend**
+- **Framework**: [Next.js 14](https://nextjs.org/) (App Router, React Server Components)
+- **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict mode)
+- **Styling**: [TailwindCSS](https://tailwindcss.com/) (Utility-first CSS)
+- **Components**: Custom React components with hooks
+- **State Management**: React Context + Server State
+
+### **Backend & Database**
+- **BaaS Platform**: [Supabase](https://supabase.com/)
+  - PostgreSQL 15+ database
+  - Real-time subscriptions
+  - Row-level security (RLS)
+  - Storage buckets with CDN
+  - Authentication service
+- **Vector Search**: [pgvector](https://github.com/pgvector/pgvector) extension
+- **Full-Text Search**: PostgreSQL native FTS
+
+### **AI & ML Services**
+- **OpenAI GPT-4**: Call summaries and insights generation
+- **OpenAI GPT-4o-mini**: Automated QA scoring
+- **OpenAI Whisper**: Audio transcription (English/Spanish)
+- **OpenAI Embeddings**: `text-embedding-ada-002` for semantic search
+
+### **Infrastructure & Deployment**
+- **Hosting**: [Vercel](https://vercel.com/) (Serverless, Edge Functions)
+- **CDN**: Vercel Edge Network
+- **Storage**: Supabase Storage (S3-compatible)
+- **CI/CD**: Vercel Git integration (automatic deployments)
+
+### **Development Tools**
+- **Code Quality**: ESLint, Prettier, TypeScript compiler
+- **Version Control**: Git + GitHub
+- **Package Manager**: npm
+- **Environment**: Node.js 18+
+
+---
+
+## 🏗️ Architecture
+
+### **System Design**
 
 ```
-.
-├── app/                    # Next.js App Router
-│   ├── api/               # API endpoints
-│   │   ├── analytics/     # Analytics & reporting
-│   │   ├── insights/      # AI insights generation
-│   │   ├── qa/           # Quality assurance
-│   │   ├── search/       # Search functionality
-│   │   ├── transcribe/   # Transcription pipeline
-│   │   └── upload/       # File upload handling
-│   ├── components/        # Reusable React components
-│   │   ├── CallCard.tsx
-│   │   ├── CallScoringPanel.tsx
-│   │   ├── SearchBar.tsx
-│   │   ├── InsightsPanel.tsx
-│   │   └── [20+ components]
-│   ├── library-enhanced/  # Enhanced call library
-│   ├── analytics/         # Analytics dashboard
-│   ├── qa/               # QA dashboard
-│   ├── upload/           # File upload page
-│   └── [auth-pages]/     # Authentication pages
-├── lib/                   # Core utility libraries
-│   ├── supabase.ts       # Database client
-│   ├── openai.ts         # AI service integration
-│   ├── embeddings.ts     # Vector search
-│   ├── qa-ai-scoring.ts  # AI scoring logic
-│   └── [15+ utilities]
-├── types/                 # TypeScript definitions
-│   ├── auth.ts
-│   ├── upload.ts
-│   ├── insights.ts
-│   ├── qa.ts
-│   └── [10+ type files]
-├── migrations/           # Database migrations
-│   ├── 01_core_schema.sql
-│   ├── 02_auth_security.sql
-│   ├── 03_features.sql
-│   └── 04_qa_analytics.sql
-├── middleware.ts         # Route protection
-├── env.example.txt       # Environment template
-└── README.md             # This file
+┌─────────────────────────────────────────────────────────┐
+│                    Client (Browser)                     │
+│  Next.js 14 App Router | TailwindCSS | React Components │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────────────┐
+│                 Next.js API Routes                      │
+│  /api/transcribe | /api/insights | /api/analytics      │
+│  /api/search | /api/qa | /api/upload                   │
+└─────┬──────────────────────────────────┬────────────────┘
+      │                                  │
+      ▼                                  ▼
+┌─────────────────┐              ┌──────────────────────┐
+│  Supabase BaaS  │              │    OpenAI APIs       │
+│                 │              │                      │
+│  • PostgreSQL   │              │  • GPT-4 (insights)  │
+│  • Auth Service │              │  • Whisper (audio)   │
+│  • Storage      │              │  • Embeddings        │
+│  • pgvector     │              │  • GPT-4o-mini (QA)  │
+└─────────────────┘              └──────────────────────┘
 ```
 
-## 🚀 Quick Deployment
+### **Data Flow**
 
-### Deploy to Vercel (Recommended)
-```bash
-# Quick deployment using the provided script
-./deploy.sh
+1. **Upload**: User uploads CSV + audio files → Supabase Storage
+2. **Transcription**: Audio → Whisper API → Transcript stored in DB
+3. **AI Insights**: Transcript → GPT-4 → Summaries, sentiment, action items
+4. **Embeddings**: Transcript chunks → OpenAI Embeddings → pgvector storage
+5. **QA Scoring**: Transcript + metadata → GPT-4o-mini → Quality scores
+6. **Analytics**: Aggregate data → Computed metrics → Dashboard visualization
 
-# Or deploy manually
-npm install -g vercel
-vercel --prod
-```
+### **Security Architecture**
 
-For detailed deployment instructions, see [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)
+- **Authentication**: Supabase Auth (JWT-based, httpOnly cookies)
+- **Authorization**: Row-Level Security policies on all tables
+- **Data Isolation**: `user_id` filtering enforced at database level
+- **API Security**: Server-side token validation, rate limiting
+- **Storage Security**: Bucket policies with user-specific paths
 
-## 🚦 Getting Started
+---
 
-### Prerequisites
+## 🚀 Getting Started
 
-- Node.js 18+ and npm
-- A Supabase account ([supabase.com](https://supabase.com))
-- An OpenAI API key ([platform.openai.com](https://platform.openai.com))
+### **Prerequisites**
 
-### Step 1: Clone and Install Dependencies
+- **Node.js** 18.x or higher
+- **npm** or **yarn**
+- **Supabase Account** ([sign up free](https://supabase.com))
+- **OpenAI API Key** ([get one here](https://platform.openai.com))
 
-```bash
-git clone <your-repo-url>
-cd dentalcallinsights
-npm install
-```
+### **Installation**
 
-### Step 2: Create a Supabase Project
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/rickyelder07/dentalcallinsights.git
+   cd dentalcallinsights
+   ```
 
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Wait for the project to finish provisioning
-3. Navigate to **Project Settings → API** to get your keys:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (keep this secret!)
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Step 3: Enable pgvector Extension
+3. **Set up Supabase project**
+   - Create a new project at [supabase.com](https://supabase.com)
+   - Wait for provisioning (2-3 minutes)
+   - Navigate to **Settings → API** and copy your keys
 
-1. In your Supabase dashboard, go to **Database → Extensions**
-2. Search for `vector` and enable the **pgvector** extension
-3. This is required for storing and searching embeddings
+4. **Enable pgvector extension**
+   - Go to **Database → Extensions**
+   - Enable **pgvector**
 
-### Step 4: Enable Email Authentication
+5. **Configure Supabase API Settings**
+   - Go to **Settings → API → API Settings**
+   - Set **Max Rows** to `10000` (default is 1000)
+   - This allows fetching larger datasets
 
-1. In your Supabase dashboard, go to **Authentication > Configuration > Sign In / Providers**
-2. Enable the **Email** provider
-3. Configure settings (optional but recommended):
-   - ✅ Enable email confirmations
-   - ✅ Enable password recovery
-   - Set minimum password strength
+6. **Run database migrations**
+   - Navigate to **SQL Editor** in Supabase dashboard
+   - Run each migration file in order:
+     1. `migrations/01_core_schema.sql`
+     2. `migrations/02_auth_security.sql`
+     3. `migrations/03_features.sql`
+     4. `migrations/04_qa_analytics.sql`
 
-### Step 5: Run Database Migrations
-
-**Migration 001 - Initial Schema:**
-
-1. In your Supabase dashboard, navigate to **SQL Editor**
-2. Click **New Query**
-3. Copy the contents of `migrations/001_init.sql` and paste into the editor
-4. Click **Run** to execute the migration
-5. Verify that `calls`, `transcripts`, and `embeddings` tables were created
-
-**Migration 002 - Row Level Security:**
-
-1. In SQL Editor, click **New Query**
-2. Copy the contents of `migrations/002_enable_rls.sql` and paste into the editor
-3. Click **Run** to execute the migration
-4. Verify RLS is enabled with this query:
-
-```sql
-SELECT tablename, rowsecurity FROM pg_tables
-WHERE schemaname = 'public'
-AND tablename IN ('calls', 'transcripts', 'embeddings');
-```
-
-All tables should show `t` (true) for `rowsecurity`.
-
-**Alternative:** Use Supabase CLI (recommended for production)
-
-```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Link to your project
-supabase link --project-ref your-project-ref
-
-# Apply migrations
-supabase db push
-```
-
-### Step 6: Set Up Environment Variables
-
-1. Copy the environment template:
-
+7. **Configure environment variables**
    ```bash
    cp env.example.txt .env.local
    ```
 
-2. Fill in your actual values in `.env.local`:
-
+   Edit `.env.local` with your credentials:
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
-   SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
-   OPENAI_API_KEY=sk-xxx...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+   SUPABASE_SERVICE_ROLE_KEY=eyJ...
+   OPENAI_API_KEY=sk-...
    NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
 
-3. **⚠️ NEVER commit `.env.local` to git!** (It's already in `.gitignore`)
+8. **Start the development server**
+   ```bash
+   npm run dev
+   ```
 
-### Step 7: Install Dependencies
+9. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-```bash
-npm install
+### **First Steps**
+
+1. Sign up for a new account at `/signup`
+2. Upload a CSV file with call metadata
+3. Upload corresponding audio files (optional)
+4. Transcribe calls from the Library page
+5. Generate AI insights
+6. Explore analytics dashboards
+
+---
+
+## ⚙️ Configuration
+
+### **Environment Variables**
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (public) | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (secret) | ✅ |
+| `OPENAI_API_KEY` | OpenAI API key | ✅ |
+| `NEXT_PUBLIC_APP_URL` | Application URL | ✅ |
+
+### **Supabase Configuration**
+
+**Important**: Set your Supabase API max rows limit to handle large datasets:
+
+1. Navigate to **Settings → API → API Settings**
+2. Increase **Max Rows** from `1000` to `10000`
+3. Save changes
+
+This prevents pagination issues when working with large call volumes.
+
+### **OpenAI Configuration**
+
+The platform uses multiple OpenAI models:
+- **Whisper**: Audio transcription
+- **GPT-4**: Insight generation (summaries, sentiment, action items)
+- **GPT-4o-mini**: QA scoring (cost-effective for batch operations)
+- **text-embedding-ada-002**: Vector embeddings for search
+
+Ensure your OpenAI account has sufficient credits and API access enabled.
+
+---
+
+## 🚢 Deployment
+
+### **Deploy to Vercel (Recommended)**
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/rickyelder07/dentalcallinsights)
+
+1. **Connect your repository**
+   - Push code to GitHub
+   - Import project in Vercel dashboard
+
+2. **Configure environment variables**
+   - Add all variables from `.env.local` in Vercel settings
+   - **Never commit `.env.local` to git!**
+
+3. **Deploy**
+   - Vercel auto-deploys on every push to `main`
+   - Preview deployments for pull requests
+
+4. **Post-deployment**
+   - Update `NEXT_PUBLIC_APP_URL` in Vercel environment variables
+   - Configure custom domain (optional)
+
+For detailed deployment instructions, see [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md).
+
+---
+
+## 📚 Documentation
+
+### **User Guides**
+- **[FEATURE_GUIDE.md](FEATURE_GUIDE.md)** - Comprehensive feature documentation
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Step-by-step setup instructions
+- **[VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)** - Production deployment guide
+
+### **Technical Documentation**
+- **[CODE_STRUCTURE.md](CODE_STRUCTURE.md)** - Codebase architecture and patterns
+- **[CODEFLOW.md](CODEFLOW.md)** - Development workflows and roadmap
+- **[TRANSCRIPTION_SETUP.md](TRANSCRIPTION_SETUP.md)** - Transcription pipeline details
+- **[AI_SCORING_GUIDE.md](AI_SCORING_GUIDE.md)** - QA scoring system overview
+
+### **Database**
+- **[migrations/](migrations/)** - SQL migration files with schema definitions
+
+---
+
+## 📁 Project Structure
+
+```
+dentalcallinsights/
+├── app/                          # Next.js App Router
+│   ├── api/                      # API Routes (serverless functions)
+│   │   ├── analytics/            # Analytics & reporting endpoints
+│   │   │   ├── caller-stats/     # Caller performance metrics
+│   │   │   ├── call-highlights/  # Daily highlights & top performers
+│   │   │   ├── overview/         # Dashboard overview data
+│   │   │   ├── trends/           # Historical trend analysis
+│   │   │   └── performance/      # Performance metrics
+│   │   ├── insights/             # AI insights generation
+│   │   ├── qa/                   # Quality assurance endpoints
+│   │   ├── search/               # Semantic & full-text search
+│   │   ├── transcribe/           # Transcription pipeline
+│   │   └── upload/               # File upload handling
+│   ├── components/               # Reusable React components
+│   │   ├── AudioPlayer.tsx       # Audio playback with waveform
+│   │   ├── CallCard.tsx          # Call list item component
+│   │   ├── CallScoringPanel.tsx  # QA scoring interface
+│   │   ├── InsightsPanel.tsx     # AI insights display
+│   │   ├── SearchBar.tsx         # Search with autocomplete
+│   │   ├── SentimentPieChart.tsx # Sentiment visualization
+│   │   └── [20+ more components]
+│   ├── (routes)/                 # Application pages
+│   │   ├── analytics/            # Analytics dashboard
+│   │   ├── caller-analytics/     # Caller performance page
+│   │   ├── call-highlights/      # Daily highlights page
+│   │   ├── library-enhanced/     # Main call library
+│   │   ├── qa/                   # QA dashboard
+│   │   ├── upload/               # Upload interface
+│   │   ├── login/                # Authentication pages
+│   │   └── profile/              # User settings
+│   └── providers/                # React context providers
+├── lib/                          # Core utilities & services
+│   ├── supabase.ts               # Supabase client configuration
+│   ├── supabase-server.ts        # Server-side Supabase client
+│   ├── openai.ts                 # OpenAI API integration
+│   ├── openai-insights.ts        # Insights generation logic
+│   ├── embeddings.ts             # Vector embedding utilities
+│   ├── analytics.ts              # Analytics computation
+│   ├── datetime.ts               # Timezone-aware date handling
+│   ├── qa-ai-scoring.ts          # AI-powered QA scoring
+│   ├── csv-parser-simplified.ts  # CSV parsing utilities
+│   └── [15+ utility modules]
+├── types/                        # TypeScript type definitions
+│   ├── auth.ts                   # Authentication types
+│   ├── upload.ts                 # Upload & call types
+│   ├── insights.ts               # AI insights types
+│   ├── analytics.ts              # Analytics data types
+│   ├── qa.ts                     # QA scoring types
+│   └── [10+ type definition files]
+├── migrations/                   # Database schema migrations
+│   ├── 01_core_schema.sql        # Core tables & indexes
+│   ├── 02_auth_security.sql      # RLS policies & security
+│   ├── 03_features.sql           # Feature-specific tables
+│   └── 04_qa_analytics.sql       # QA & analytics tables
+├── middleware.ts                 # Route protection & auth
+├── tailwind.config.ts            # TailwindCSS configuration
+├── tsconfig.json                 # TypeScript configuration
+├── next.config.js                # Next.js configuration
+├── .env.local                    # Environment variables (gitignored)
+├── env.example.txt               # Environment template
+└── README.md                     # This file
 ```
 
-This will install all required packages including `@supabase/auth-helpers-nextjs`.
+---
 
-### Step 8: Start the Development Server
+## ⚡ Performance Considerations
 
-```bash
-npm run dev
-```
+### **Query Optimization**
+- **Indexed Queries**: All frequent queries use database indexes
+- **Connection Pooling**: Supabase handles connection management
+- **Caching**: API responses cached where appropriate
+- **Pagination**: Large datasets use cursor-based pagination
 
-Visit [http://localhost:3000](http://localhost:3000) to see your app running! ✅
+### **AI Cost Management**
+- **Smart Caching**: Insights cached to avoid redundant API calls
+- **Bulk Operations**: Batch processing for transcription/insights
+- **Model Selection**: GPT-4o-mini for cost-effective QA scoring
+- **Minimum Duration**: Only transcribe calls >6 seconds
 
-### Step 9: Verify the Setup
+### **Frontend Performance**
+- **Server Components**: Reduced client-side JavaScript
+- **Code Splitting**: Automatic route-based splitting
+- **Image Optimization**: Next.js automatic image optimization
+- **Edge Caching**: Static assets served from Vercel Edge Network
 
-- ✅ The home page loads without errors
-- ✅ Navigation links are visible (Login/Sign Up when logged out)
-- ✅ No console errors in browser dev tools
-- ✅ Database tables exist in Supabase dashboard
-- ✅ Can sign up a new account
-- ✅ Can sign in and access protected routes
-- ✅ Session persists on page refresh
+### **Scalability**
+- **Serverless Architecture**: Auto-scales with traffic
+- **Database Connection Pooling**: Handles concurrent requests
+- **Row-Level Security**: Efficient user data isolation
+- **Vector Indexing**: IVFFLAT index for fast similarity search
 
-### Step 10: Test Authentication (Optional)
-
-1. Go to http://localhost:3000/signup
-2. Create a test account with a valid email
-3. Sign in at http://localhost:3000/login
-4. Verify you can access /library-enhanced, /upload, /qa, /profile
-5. Sign out and verify redirect to login
-6. Try accessing /library-enhanced while logged out → should redirect to login
-
-For detailed testing instructions, see `AUTHENTICATION_SETUP.md`.
-
-## 📊 Database Schema
-
-### `calls` Table
-
-Stores audio file metadata and CSV call data in a unified structure.
-
-```sql
-id UUID PRIMARY KEY
-user_id UUID NOT NULL
-filename TEXT NOT NULL -- Audio filename or "No Call Recording"
-audio_path TEXT NOT NULL DEFAULT '' -- Storage path or empty for no recording
-file_size BIGINT
-file_type TEXT
-upload_status TEXT DEFAULT 'pending'
-call_time TIMESTAMPTZ
-call_direction TEXT -- 'Inbound' or 'Outbound'
-source_number TEXT
-source_name TEXT
-source_extension TEXT
-destination_number TEXT
-destination_extension TEXT
-call_duration_seconds INTEGER
-disposition TEXT
-time_to_answer_seconds INTEGER
-call_flow TEXT
-metadata JSONB DEFAULT '{}'
-created_at TIMESTAMPTZ
-updated_at TIMESTAMPTZ
-```
-
-**Indexes:**
-
-- `user_id` - for user-specific queries
-- `filename` - for filename lookups
-- `call_time` - for time-based sorting
-- `upload_status` - for status filtering
-
-### `transcripts` Table
-
-Stores transcription results and AI-generated insights.
-
-```sql
-id UUID PRIMARY KEY
-call_id UUID NOT NULL (FK → calls)
-transcript TEXT NOT NULL
-summary TEXT
-sentiment TEXT
-duration INTEGER
-language TEXT
-confidence_score NUMERIC(3,2)
-created_at TIMESTAMPTZ
-```
-
-**Indexes:**
-
-- `call_id` - for call lookups
-- `transcript` (full-text) - for text search
-- `sentiment` - for filtering
-
-### `embeddings` Table
-
-Stores vector embeddings for semantic search.
-
-```sql
-id UUID PRIMARY KEY
-call_id UUID NOT NULL (FK → calls)
-chunk_index INTEGER NOT NULL
-content TEXT NOT NULL
-embedding vector(1536) NOT NULL
-created_at TIMESTAMPTZ
-```
-
-**Indexes:**
-
-- `call_id` - for call lookups
-- `embedding` (ivfflat) - for vector similarity search
-
-**⚠️ Vector Dimension Notes:**
-
-- Default: `vector(1536)` for OpenAI's `text-embedding-ada-002`
-- For `text-embedding-3-small`: use `vector(1536)`
-- For `text-embedding-3-large`: use `vector(3072)`
-- To change dimension, edit `migrations/001_init.sql` before running migration
-
-### Utility Functions
-
-**`search_embeddings(query_embedding, match_threshold, match_count)`**
-Returns the most similar embeddings using cosine similarity.
-
-## 🚢 Deployment to Vercel
-
-### Quick Deploy
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com) and import your repository
-3. Add environment variables in Vercel project settings:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `OPENAI_API_KEY`
-4. Deploy! 🎉
-
-### Automatic Environment Variables
-
-Vercel automatically sets `NEXT_PUBLIC_APP_URL` for you.
+---
 
 ## 🧪 Available Scripts
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
+npm run dev          # Start development server (localhost:3000)
+npm run build        # Build production bundle
 npm run start        # Start production server
-npm run lint         # Run ESLint
+npm run lint         # Run ESLint checks
 npm run format       # Format code with Prettier
 npm run format:check # Check if code is formatted
-npm run type-check   # Run TypeScript type checking
-npm run db:migrate   # Migration instructions (see output)
+npm run type-check   # Run TypeScript compiler checks
 ```
-
-## 🔐 Security Best Practices
-
-- ✅ Never commit `.env.local` or any secrets
-- ✅ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-side code (never expose to client)
-- ✅ Environment variables template provided in `env.example.txt`
-- ✅ `.gitignore` configured to exclude sensitive files
-- ✅ Row Level Security (RLS) enabled on all tables
-- ✅ User data isolation enforced at database level
-- ✅ Session tokens stored in httpOnly cookies (XSS protection)
-- ✅ CSRF protection built into Supabase Auth
-- ✅ Password strength validation
-- ✅ Email/password format validation
-
-**Testing RLS:**
-
-See `AUTHENTICATION_SETUP.md` for detailed instructions on testing Row Level Security policies.
-
-## 🗺️ Roadmap & Next Milestones
-
-### ✅ Milestone 1: Project Scaffold (Complete)
-
-- ✅ Next.js 14 + TypeScript setup
-- ✅ TailwindCSS configuration
-- ✅ Supabase client setup
-- ✅ Database schema with pgvector
-- ✅ Basic navigation and pages
-
-### ✅ Milestone 2: Authentication & User Management (Complete)
-
-- ✅ Implement Supabase Auth (email/password)
-- ✅ Protected routes with Next.js middleware
-- ✅ Row Level Security (RLS) on all tables
-- ✅ User profile and password management
-- ✅ Password reset flow
-- ✅ Session management with auto-refresh
-
-### ✅ Milestone 3: Audio Upload & Storage (Complete)
-
-- ✅ File upload component with drag-and-drop
-- ✅ Supabase Storage integration
-- ✅ Upload progress and validation
-- ✅ CSV upload with direct filename matching
-- ✅ File type and size validation
-- ✅ Storage bucket configuration with RLS
-- ✅ Support for calls without recordings
-- ✅ Duplicate prevention and upsert logic
-
-### Milestone 4: Transcription Pipeline
-
-- [ ] OpenAI Whisper API integration
-- [ ] Background job processing
-- [ ] Transcript display and editing
-- [ ] Speaker diarization (if needed)
-
-### Milestone 5: AI Insights
-
-- [ ] GPT-based summarization
-- [ ] Sentiment analysis
-- [ ] Key topic extraction
-- [ ] Action item detection
-
-### Milestone 6: Embeddings & Search
-
-- [ ] OpenAI embeddings generation
-- [ ] Vector storage in pgvector
-- [ ] Semantic search UI
-- [ ] Search result ranking
-
-### Milestone 7: Library & Analytics
-
-- [ ] Call library with filters and sorting
-- [ ] Pagination and infinite scroll
-- [ ] Basic analytics dashboard
-- [ ] Export functionality
-
-### Milestone 8:  QA & Call Scoring
-
-- [ ] QA checklist template
-- [ ] call scoring
-
-
-## 🛠️ Development Notes
-
-### Code Style
-
-- TypeScript strict mode enabled
-- ESLint + Prettier configured
-- Functional React components with hooks
-- Server/client boundaries explicit
-
-### Key Design Decisions
-
-**Why pgvector?**
-Native Postgres extension for vector similarity search. No additional infrastructure needed.
-
-**Why vector(1536)?**
-OpenAI's `text-embedding-ada-002` produces 1536-dimensional vectors. Adjust if using different models.
-
-**Why ivfflat index?**
-Good balance between query speed and index size. Lists parameter (100) can be tuned based on dataset size.
-
-**Why JSONB for metadata?**
-Flexible schema for call metadata (patient ID, tags, custom fields) without rigid table structure.
-
-## 🤝 Contributing
-
-This is a solo project for now, but contributions welcome! Please:
-
-1. Create a feature branch
-2. Follow existing code style
-3. Add tests where applicable
-4. Update documentation
-
-## 📄 License
-
-[Your License Here]
-
-## 🐛 Troubleshooting
-
-### Error: "Missing Supabase environment variables"
-
-→ Make sure `.env.local` exists and contains valid Supabase keys
-
-### Error: "relation 'calls' does not exist"
-
-→ Run the migration SQL in Supabase SQL Editor
-
-### Error: "type 'vector' does not exist"
-
-→ Enable the pgvector extension in Supabase dashboard
-
-### Build fails on Vercel
-
-→ Check that all environment variables are set in Vercel project settings
-
-## 📞 Support
-
-For issues or questions, please open a GitHub issue or contact [your email].
 
 ---
 
-Built with ❤️ using Next.js and Supabase
+## 🔒 Security
+
+### **Authentication & Authorization**
+- ✅ Supabase Auth with JWT tokens
+- ✅ httpOnly cookies (XSS protection)
+- ✅ CSRF protection
+- ✅ Row-Level Security on all tables
+- ✅ User data isolation at database level
+
+### **Data Protection**
+- ✅ Encrypted data at rest and in transit
+- ✅ Environment variables never committed
+- ✅ Service role key only used server-side
+- ✅ HIPAA-compliant infrastructure (Supabase)
+
+### **Best Practices**
+- ✅ Regular dependency updates
+- ✅ Secure password requirements
+- ✅ Email verification
+- ✅ Session timeout and refresh
+- ✅ API rate limiting
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. **Fork the repository**
+2. **Create a feature branch** (`git checkout -b feature/AmazingFeature`)
+3. **Follow the existing code style** (TypeScript, ESLint, Prettier)
+4. **Write meaningful commit messages**
+5. **Test your changes thoroughly**
+6. **Update documentation** if needed
+7. **Submit a pull request**
+
+### **Development Guidelines**
+- Use TypeScript strict mode
+- Follow functional React patterns
+- Write self-documenting code
+- Add JSDoc comments for complex functions
+- Keep components small and focused
+
+---
+
+## 🐛 Troubleshooting
+
+### **Common Issues**
+
+**"Missing Supabase environment variables"**
+- Ensure `.env.local` exists with all required variables
+
+**"relation 'calls' does not exist"**
+- Run database migrations in Supabase SQL Editor
+
+**"type 'vector' does not exist"**
+- Enable pgvector extension in Supabase dashboard
+
+**"Only seeing 1000 calls in Library"**
+- Increase Supabase API Settings → Max Rows to `10000`
+
+**Build fails on Vercel**
+- Verify all environment variables are set in Vercel project settings
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [Next.js](https://nextjs.org/) - The React framework for production
+- [Supabase](https://supabase.com/) - Open-source Firebase alternative
+- [OpenAI](https://openai.com/) - AI models for transcription and insights
+- [Vercel](https://vercel.com/) - Deployment platform
+- [TailwindCSS](https://tailwindcss.com/) - Utility-first CSS framework
+
+---
+
+## 📞 Contact & Support
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/rickyelder07/dentalcallinsights/issues)
+- **Email**: [your-email@example.com]
+- **Live Demo**: [dentalcallinsights.vercel.app](https://dentalcallinsights.vercel.app)
+
+---
+
+<div align="center">
+
+**Built with ❤️ for dental practices everywhere**
+
+⭐ Star this repo if you find it helpful!
+
+</div>

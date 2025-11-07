@@ -94,6 +94,7 @@ export async function GET(request: NextRequest) {
       .gte('call_time', dateStart)
       .lte('call_time', endDate.toISOString())
       .order('call_time', { ascending: false })
+      .limit(10000) // Increase from default 1000 to support larger datasets
 
     if (callsError) throw callsError
 
@@ -104,6 +105,7 @@ export async function GET(request: NextRequest) {
       .from('insights')
       .select('*')
       .in('call_id', callIds)
+      .limit(10000) // Increase from default 1000 to support larger datasets
 
     if (insightsError) throw insightsError
 

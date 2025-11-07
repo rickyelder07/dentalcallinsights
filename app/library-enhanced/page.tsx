@@ -122,6 +122,7 @@ export default function EnhancedLibraryPage() {
         `)
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
+        .limit(10000) // Increase from default 1000 to support larger datasets
 
       if (fetchError) {
         console.error('Supabase error:', fetchError)

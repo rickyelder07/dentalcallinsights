@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_id', user.id)
       .order('call_time', { ascending: false })
+      .limit(10000) // Increase from default 1000 to support larger datasets
 
     if (dateStart) {
       callsQuery = callsQuery.gte('call_time', dateStart)
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
       .from('insights')
       .select('*')
       .eq('user_id', user.id)
+      .limit(10000) // Increase from default 1000 to support larger datasets
 
     if (insightsError) throw insightsError
 

@@ -68,13 +68,14 @@ export async function GET(request: NextRequest) {
     // Fetch all necessary data
     const [callsResult, transcriptsResult, insightsResult, embeddingsResult] =
       await Promise.all([
-        supabase.from('calls').select('*').eq('user_id', user.id),
-        supabase.from('transcripts').select('*'),
-        supabase.from('insights').select('*').eq('user_id', user.id),
+        supabase.from('calls').select('*').eq('user_id', user.id).limit(10000),
+        supabase.from('transcripts').select('*').limit(10000),
+        supabase.from('insights').select('*').eq('user_id', user.id).limit(10000),
         supabase
           .from('embeddings')
           .select('call_id')
-          .eq('user_id', user.id),
+          .eq('user_id', user.id)
+          .limit(10000),
       ])
 
     if (callsResult.error) throw callsResult.error

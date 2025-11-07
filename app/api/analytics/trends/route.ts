@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch calls and insights
     const [callsResult, insightsResult] = await Promise.all([
-      supabase.from('calls').select('*').eq('user_id', user.id),
-      supabase.from('insights').select('*').eq('user_id', user.id),
+      supabase.from('calls').select('*').eq('user_id', user.id).limit(10000),
+      supabase.from('insights').select('*').eq('user_id', user.id).limit(10000),
     ])
 
     if (callsResult.error) throw callsResult.error

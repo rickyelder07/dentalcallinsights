@@ -154,6 +154,7 @@ export default function AnalyticsPage() {
         `)
         .eq('user_id', session.user.id)
         .order('call_time', { ascending: false })
+        .limit(10000) // Increase from default 1000 to support larger datasets
 
       // Apply filters
       if (dateRangeStart) {
