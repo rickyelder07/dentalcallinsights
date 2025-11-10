@@ -57,7 +57,7 @@ export const generateCallInsights = inngest.createFunction(
       await updateInsightsProgress(callId, event.id, 20, 'analyzing', 'Checking cache...')
 
       const { data } = await supabase
-        .from('call_insights')
+        .from('insights')
         .select('*')
         .eq('call_id', callId)
         .single()
@@ -110,18 +110,22 @@ export const generateCallInsights = inngest.createFunction(
     await step.run('save-insights', async () => {
       await updateInsightsProgress(callId, event.id, 90, 'saving', 'Saving insights...')
 
+      // Map new format to old insights table schema
       const { error } = await supabase
-        .from('call_insights')
+        .from('insights')
         .upsert({
           call_id: callId,
-          summary: insights.summary,
-          sentiment: insights.sentiment,
-          action_items: insights.action_items,
-          red_flags: insights.red_flags,
-          metadata: {
-            generated_at: new Date().toISOString(),
-            model: 'gpt-4o-mini',
-          },
+          user_id: userId,
+          overall_sentiment: insights.sentiment?.overall || 'neutral',
+          key_points: insights.summary?.key_points || [],
+          action_items: insights.action_items || [],
+          red_flags: insights.red_flags || [],
+          call_outcome: insights.summary?.outcome || '',
+          staff_performance: insights.sentiment?.staff_performance || 'professional',
+          patient_satisfaction_score: null, // Not in new format
+          appointment_scheduled: false, // Not in new format
+          appointment_cancelled: false, // Not in new format
+          model_used: 'gpt-4o-mini',
         })
 
       if (error) {

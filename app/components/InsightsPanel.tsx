@@ -62,13 +62,13 @@ export default function InsightsPanel({
       if (existingInsights && !fetchError) {
         const cachedInsights = {
           summary: {
-            brief: existingInsights.summary_brief || '',
-            key_points: existingInsights.summary_key_points || [],
+            brief: '', // Not in old schema
+            key_points: existingInsights.key_points || [],
             outcome: existingInsights.call_outcome || '',
           },
           sentiment: {
             overall: existingInsights.overall_sentiment || 'neutral',
-            patient_satisfaction: existingInsights.patient_satisfaction || 'neutral',
+            patient_satisfaction: 'neutral', // Not in old schema
             staff_performance: existingInsights.staff_performance || 'professional',
           },
           action_items: existingInsights.action_items || [],

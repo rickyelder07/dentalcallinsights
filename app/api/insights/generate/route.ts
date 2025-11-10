@@ -72,28 +72,19 @@ export async function POST(req: NextRequest) {
     if (call.filename === 'No Call Recording') {
       console.log('No Call Recording detected - auto-completing insights job')
       
-      // Create completed insights record with placeholder data
+      // Create completed insights record with placeholder data using correct schema
       const { error: insightsError } = await supabase
-        .from('call_insights')
+        .from('insights')
         .upsert({
           call_id: callId,
-          summary: {
-            brief: 'No recording available for this call.',
-            key_points: [],
-            outcome: 'no_recording'
-          },
-          sentiment: {
-            overall: 'neutral',
-            patient_satisfaction: 'neutral',
-            staff_performance: 'neutral'
-          },
+          user_id: user.id,
+          overall_sentiment: 'neutral',
+          key_points: ['No recording available for this call.'],
           action_items: [],
           red_flags: [],
-          metadata: {
-            generated_at: new Date().toISOString(),
-            auto_completed: true,
-            reason: 'No Call Recording'
-          }
+          call_outcome: 'no_recording',
+          staff_performance: 'professional',
+          model_used: 'N/A - No Recording',
         })
 
       if (insightsError) {
@@ -136,17 +127,32 @@ export async function POST(req: NextRequest) {
     // Check for existing insights (if not forcing regeneration)
     if (!forceRegenerate) {
       const { data: existingInsights } = await supabase
-        .from('call_insights')
+        .from('insights')
         .select('*')
         .eq('call_id', callId)
         .single()
       
       if (existingInsights) {
-        // Return cached insights immediately (no job needed)
+        // Return cached insights in expected format (no job needed)
+        const formattedInsights = {
+          summary: {
+            brief: '',
+            key_points: existingInsights.key_points || [],
+            outcome: existingInsights.call_outcome || '',
+          },
+          sentiment: {
+            overall: existingInsights.overall_sentiment || 'neutral',
+            patient_satisfaction: 'neutral', // Not in old schema
+            staff_performance: existingInsights.staff_performance || 'professional',
+          },
+          action_items: existingInsights.action_items || [],
+          red_flags: existingInsights.red_flags || [],
+        }
+        
         return NextResponse.json({
           success: true,
           cached: true,
-          insights: existingInsights,
+          insights: formattedInsights,
         })
       }
     }
