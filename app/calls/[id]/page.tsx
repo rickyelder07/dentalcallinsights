@@ -220,18 +220,22 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
   }
 
   // Re-apply user's transcription corrections
-  const handleReapplyCorrections = async () => {
-    if (!transcript) return
+  const handleRetranscribe = async () => {
+    if (!call) return
 
     const confirmed = window.confirm(
-      'Re-apply your transcription corrections to this transcript?\n\n' +
-      'This will update the transcript based on your current correction rules in Profile > Transcription Corrections.'
+      'Re-transcribe this call?\n\n' +
+      'This will generate a new transcript from the audio file. ' +
+      'The existing transcript will be replaced.\n\n' +
+      'Note: This process may take a few minutes depending on call length.'
     )
 
     if (!confirmed) return
 
     try {
-      setIsLoading(true)
+      setIsTranscribing(true)
+      setError(null)
+
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -240,27 +244,32 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         throw new Error('Not authenticated')
       }
 
-      const response = await fetch(`/api/transcripts/${transcript.id}/apply-corrections`, {
+      // Call the transcribe API
+      const response = await fetch('/api/transcribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify({
+          callId: callId,
+        }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to apply corrections')
+        throw new Error(errorData.error || 'Failed to start re-transcription')
       }
 
-      // Refresh transcript data
-      await fetchCallData()
-      alert('Corrections applied successfully!')
+      // Start polling for status
+      pollTranscriptionStatus()
+      
+      // Show success message
+      alert('Re-transcription started! The page will refresh when complete.')
     } catch (err) {
-      console.error('Error applying corrections:', err)
-      alert('Failed to apply corrections. Please try again.')
-    } finally {
-      setIsLoading(false)
+      console.error('Error starting re-transcription:', err)
+      setError(err instanceof Error ? err.message : 'Failed to start re-transcription')
+      setIsTranscribing(false)
     }
   }
 
@@ -460,11 +469,12 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
               <h2 className="text-2xl font-bold text-gray-900">Transcript</h2>
               <div className="flex gap-2">
                 <button
-                  onClick={handleReapplyCorrections}
-                  className="px-4 py-2 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors font-medium"
-                  title="Re-apply your transcription correction rules"
+                  onClick={handleRetranscribe}
+                  disabled={isTranscribing}
+                  className="px-4 py-2 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Generate a new transcript from the audio file"
                 >
-                  🔄 Apply Corrections
+                  {isTranscribing ? '⏳ Re-Transcribing...' : '🔄 Re-Transcribe'}
                 </button>
                 <button
                   onClick={() => setIsEditing(!isEditing)}
