@@ -17,12 +17,20 @@ import {
 } from '@/lib/analytics'
 
 export async function GET(request: NextRequest) {
+  console.log('=== CALL HIGHLIGHTS API CALLED ===')
+  console.log('Request URL:', request.url)
+  
+  // Declare variables in outer scope for error handler
+  let dateStart: string | null = null
+  let dateEnd: string | null = null
+  
   try {
     // Get access token from Authorization header
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.replace('Bearer ', '')
 
     if (!token) {
+      console.error('No auth token provided')
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -47,8 +55,8 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
-    const dateStart = searchParams.get('dateStart')
-    const dateEnd = searchParams.get('dateEnd')
+    dateStart = searchParams.get('dateStart')
+    dateEnd = searchParams.get('dateEnd')
     const forceRefresh = searchParams.get('forceRefresh') === 'true'
 
     if (!dateStart || !dateEnd) {
@@ -84,32 +92,83 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch calls with date filtering
-    const endDate = new Date(dateEnd)
-    endDate.setHours(23, 59, 59, 999)
+    // Use ISO format for timestamptz comparisons (Supabase expects ISO format)
+    // Create dates in local timezone, then convert to ISO
+    let startDateISO: string
+    let endDateISO: string
+    
+    try {
+      const [startYear, startMonth, startDay] = dateStart.split('-').map(Number)
+      if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay)) {
+        throw new Error(`Invalid start date: ${dateStart}`)
+      }
+      const startDateLocal = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0)
+      startDateISO = startDateLocal.toISOString()
+      
+      const [endYear, endMonth, endDay] = dateEnd.split('-').map(Number)
+      if (isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
+        throw new Error(`Invalid end date: ${dateEnd}`)
+      }
+      const endDateLocal = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+      endDateISO = endDateLocal.toISOString()
+      
+      console.log('Date range:', { dateStart, dateEnd, startDateISO, endDateISO })
+    } catch (dateError) {
+      console.error('Date parsing error:', dateError)
+      throw new Error(`Date parsing failed: ${dateError instanceof Error ? dateError.message : 'Unknown error'}`)
+    }
 
+    console.log('Fetching calls...')
     const { data: calls, error: callsError } = await supabase
       .from('calls')
       .select('*')
       .eq('user_id', user.id)
-      .gte('call_time', dateStart)
-      .lte('call_time', endDate.toISOString())
+      .gte('call_time', startDateISO)
+      .lte('call_time', endDateISO)
       .order('call_time', { ascending: false })
       .limit(10000) // Increase from default 1000 to support larger datasets
 
-    if (callsError) throw callsError
+    if (callsError) {
+      console.error('Error fetching calls:', callsError)
+      throw callsError
+    }
+    console.log(`Fetched ${calls?.length || 0} calls`)
 
     // Fetch insights for those calls
+    // Batch the query in chunks of 100 to avoid timeout issues
     const callIds = (calls || []).map((c: any) => c.id)
     
-    const { data: insights, error: insightsError } = await supabase
-      .from('insights')
-      .select('*')
-      .in('call_id', callIds)
-      .limit(10000) // Increase from default 1000 to support larger datasets
+    let insights: any[] = []
+    if (callIds.length > 0) {
+      console.log(`Fetching insights for ${callIds.length} calls...`)
+      
+      // Split into chunks of 100
+      const chunkSize = 100
+      const chunks = []
+      for (let i = 0; i < callIds.length; i += chunkSize) {
+        chunks.push(callIds.slice(i, i + chunkSize))
+      }
+      
+      // Fetch each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`Fetching chunk ${i + 1}/${chunks.length}...`)
+        const { data: insightsData, error: insightsError } = await supabase
+          .from('insights')
+          .select('*')
+          .in('call_id', chunks[i])
 
-    if (insightsError) throw insightsError
+        if (insightsError) {
+          console.error(`Error fetching insights chunk ${i + 1}:`, insightsError)
+          throw insightsError
+        }
+        insights = insights.concat(insightsData || [])
+      }
+      
+      console.log(`Fetched ${insights.length} total insights`)
+    }
 
     // Process all the data
+    console.log('Processing data...')
     const allCalls = calls || []
     const allInsights = insights || []
 
@@ -199,10 +258,17 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Call highlights error:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      dateStart,
+      dateEnd,
+    })
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch call highlights',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined,
       },
       { status: 500 }
     )

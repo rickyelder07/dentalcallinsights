@@ -50,11 +50,16 @@ export async function GET(req: NextRequest) {
       .select('*', { count: 'exact', head: false })
       .eq('user_id', user.id)
     
+    // Fix timezone issue: format dates in local timezone for proper comparison
     if (dateFrom) {
-      searchQuery = searchQuery.gte('created_at', dateFrom)
+      const [startYear, startMonth, startDay] = dateFrom.split('-').map(Number)
+      const startDateStr = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')} 00:00:00`
+      searchQuery = searchQuery.gte('created_at', startDateStr)
     }
     if (dateTo) {
-      searchQuery = searchQuery.lte('created_at', dateTo)
+      const [endYear, endMonth, endDay] = dateTo.split('-').map(Number)
+      const endDateStr = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')} 23:59:59`
+      searchQuery = searchQuery.lte('created_at', endDateStr)
     }
     
     const { data: searches, count: totalSearches, error: searchError } = await searchQuery

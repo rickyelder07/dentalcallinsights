@@ -197,8 +197,11 @@ export default function EnhancedLibraryPage() {
     }
 
     // Apply date range filter
+    // Fix timezone issue: create dates in local timezone to match parseCallTime behavior
     if (dateRangeStart) {
-      const startDate = new Date(dateRangeStart)
+      // Parse date string and create Date in local timezone (not UTC)
+      const [year, month, day] = dateRangeStart.split('-').map(Number)
+      const startDate = new Date(year, month - 1, day, 0, 0, 0, 0) // Local midnight
       filtered = filtered.filter((call) => {
         const callDate = parseCallTime(call.call_time)
         if (!callDate) return false
@@ -206,8 +209,9 @@ export default function EnhancedLibraryPage() {
       })
     }
     if (dateRangeEnd) {
-      const endDate = new Date(dateRangeEnd)
-      endDate.setHours(23, 59, 59, 999) // Include entire end date
+      // Parse date string and create Date in local timezone (not UTC)
+      const [year, month, day] = dateRangeEnd.split('-').map(Number)
+      const endDate = new Date(year, month - 1, day, 23, 59, 59, 999) // Local end of day
       filtered = filtered.filter((call) => {
         const callDate = parseCallTime(call.call_time)
         if (!callDate) return false

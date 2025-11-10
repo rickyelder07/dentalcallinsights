@@ -85,13 +85,16 @@ export async function GET(request: NextRequest) {
       .order('call_time', { ascending: false })
       .limit(10000) // Increase from default 1000 to support larger datasets
 
+    // Fix timezone issue: format dates in local timezone for proper comparison
     if (dateStart) {
-      callsQuery = callsQuery.gte('call_time', dateStart)
+      const [startYear, startMonth, startDay] = dateStart.split('-').map(Number)
+      const startDateStr = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')} 00:00:00`
+      callsQuery = callsQuery.gte('call_time', startDateStr)
     }
     if (dateEnd) {
-      const endDate = new Date(dateEnd)
-      endDate.setHours(23, 59, 59, 999)
-      callsQuery = callsQuery.lte('call_time', endDate.toISOString())
+      const [endYear, endMonth, endDay] = dateEnd.split('-').map(Number)
+      const endDateStr = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')} 23:59:59`
+      callsQuery = callsQuery.lte('call_time', endDateStr)
     }
 
     const { data: calls, error: callsError } = await callsQuery

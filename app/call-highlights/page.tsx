@@ -61,10 +61,34 @@ export default function CallHighlightsPage() {
         },
       })
 
-      if (!response.ok) throw new Error('Failed to fetch highlights')
+      // Get response text (can only be read once)
+      const responseText = await response.text()
+      
+      // Check response status
+      if (!response.ok) {
+        console.error('API Response Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseText,
+        })
+        throw new Error(`API Error (${response.status}): ${responseText || response.statusText}`)
+      }
 
-      const result = await response.json()
-      if (!result.success) throw new Error(result.error || 'Failed to fetch highlights')
+      // Try to parse JSON
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (jsonError) {
+        console.error('JSON Parse Error:', jsonError)
+        console.error('Response body:', responseText)
+        throw new Error('Invalid JSON response from API')
+      }
+      
+      if (!result.success) {
+        const errorMsg = result.error || result.details || 'Failed to fetch highlights'
+        console.error('API Error:', result)
+        throw new Error(errorMsg)
+      }
 
       setData(result.data)
     } catch (err) {

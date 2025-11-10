@@ -157,13 +157,18 @@ export default function AnalyticsPage() {
         .limit(10000) // Increase from default 1000 to support larger datasets
 
       // Apply filters
+      // Fix timezone issue: ensure dates are formatted correctly for database comparison
       if (dateRangeStart) {
-        query = query.gte('call_time', dateRangeStart)
+        // Format as YYYY-MM-DD HH:MM:SS in local timezone for proper comparison
+        const [year, month, day] = dateRangeStart.split('-').map(Number)
+        const startDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 00:00:00`
+        query = query.gte('call_time', startDateStr)
       }
       if (dateRangeEnd) {
-        const endDate = new Date(dateRangeEnd)
-        endDate.setHours(23, 59, 59, 999)
-        query = query.lte('call_time', endDate.toISOString())
+        // Format as YYYY-MM-DD HH:MM:SS in local timezone for proper comparison
+        const [year, month, day] = dateRangeEnd.split('-').map(Number)
+        const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 23:59:59`
+        query = query.lte('call_time', endDateStr)
       }
       if (directionFilter !== 'all') {
         query = query.eq('call_direction', directionFilter)

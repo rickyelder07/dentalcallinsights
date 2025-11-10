@@ -55,11 +55,16 @@ export async function GET(request: NextRequest) {
       .order('scored_at', { ascending: false })
 
     // Apply filters
+    // Fix timezone issue: format dates in local timezone for proper comparison
     if (dateRangeStart) {
-      scoresQuery = scoresQuery.gte('scored_at', dateRangeStart)
+      const [startYear, startMonth, startDay] = dateRangeStart.split('-').map(Number)
+      const startDateStr = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')} 00:00:00`
+      scoresQuery = scoresQuery.gte('scored_at', startDateStr)
     }
     if (dateRangeEnd) {
-      scoresQuery = scoresQuery.lte('scored_at', dateRangeEnd)
+      const [endYear, endMonth, endDay] = dateRangeEnd.split('-').map(Number)
+      const endDateStr = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')} 23:59:59`
+      scoresQuery = scoresQuery.lte('scored_at', endDateStr)
     }
     if (agents && agents.length > 0) {
       scoresQuery = scoresQuery.in('agent_name', agents)
