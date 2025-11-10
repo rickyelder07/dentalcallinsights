@@ -502,33 +502,19 @@ export default function EnhancedLibraryPage() {
       return
     }
 
-    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?\n\nNote: Cached insights will be reused when available.`)) {
+    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?\n\nNote: Jobs will continue in the background even if you close this window.`)) {
       return
     }
-
-    // Initialize jobs
-    const jobs = callsForInsights.map(call => ({
-      id: call.id,
-      callId: call.id,
-      filename: call.filename || 'Unknown',
-      status: 'pending' as const,
-    }))
-
-    setInsightsJobs(jobs)
-    setShowInsightsProgress(true)
-    setIsProcessing(true)
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      // Process each call sequentially with progress updates
-      for (const call of callsForInsights) {
-        // Update status to processing
-        if ((window as any).updateInsightsJobStatus) {
-          (window as any).updateInsightsJobStatus(call.id, { status: 'processing' })
-        }
+      const jobs: any[] = []
+      const results = { success: 0, failed: 0, errors: [] as string[] }
 
+      // Create all jobs (send API requests to queue them)
+      for (const call of callsForInsights) {
         try {
           const response = await fetch('/api/insights/generate', {
             method: 'POST',
@@ -542,34 +528,37 @@ export default function EnhancedLibraryPage() {
           const result = await response.json()
 
           if (response.ok) {
-            // Update status to completed
-            if ((window as any).updateInsightsJobStatus) {
-              (window as any).updateInsightsJobStatus(call.id, { 
-                status: 'completed',
-                cached: result.cached || false,
-              })
-            }
+            jobs.push({
+              id: result.jobId || call.id,
+              callId: call.id,
+              filename: call.filename || 'Unknown',
+              status: result.cached ? 'completed' : 'processing',
+              cached: result.cached || false,
+            })
+            results.success++
           } else {
-            // Update status to failed
-            if ((window as any).updateInsightsJobStatus) {
-              (window as any).updateInsightsJobStatus(call.id, { 
-                status: 'failed',
-                error: result.error || 'Failed to generate insights',
-              })
-            }
+            results.failed++
+            results.errors.push(`${call.filename}: ${result.error}`)
           }
         } catch (error) {
-          // Update status to failed
-          if ((window as any).updateInsightsJobStatus) {
-            (window as any).updateInsightsJobStatus(call.id, { 
-              status: 'failed',
-              error: error instanceof Error ? error.message : 'Network error',
-            })
-          }
+          console.error(`Failed to start insights for ${call.filename}:`, error)
+          results.failed++
+          results.errors.push(`${call.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
       }
-    } finally {
-      setIsProcessing(false)
+
+      // Show progress window if we have jobs
+      if (jobs.length > 0) {
+        setInsightsJobs(jobs)
+        setShowInsightsProgress(true)
+        clearSelection()
+      } else {
+        alert(`Failed to start any insights generation:\n${results.errors.join('\n')}`)
+      }
+
+    } catch (error) {
+      console.error('Bulk insights error:', error)
+      alert(`Failed to start bulk insights: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

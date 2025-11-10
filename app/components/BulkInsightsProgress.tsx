@@ -1,11 +1,13 @@
 /**
  * Bulk Insights Generation Progress Component
  * Shows real-time progress for bulk AI insights generation operations
+ * Polls database for job status updates
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase'
 
 interface InsightsJob {
   id: string
@@ -15,6 +17,8 @@ interface InsightsJob {
   error?: string
   progress?: number
   cached?: boolean
+  stage?: string
+  message?: string
 }
 
 interface BulkInsightsProgressProps {
@@ -28,8 +32,9 @@ export default function BulkInsightsProgress({
   onComplete,
   onCancel,
 }: BulkInsightsProgressProps) {
+  const supabase = createBrowserClient()
   const [jobStatuses, setJobStatuses] = useState<Record<string, InsightsJob>>({})
-  const [isProcessing, setIsProcessing] = useState(true)
+  const [isPolling, setIsPolling] = useState(true)
 
   // Initialize job statuses
   useEffect(() => {
@@ -40,39 +45,74 @@ export default function BulkInsightsProgress({
     setJobStatuses(initialStatuses)
   }, [jobs])
 
-  // Update job status
-  const updateJobStatus = (callId: string, updates: Partial<InsightsJob>) => {
-    setJobStatuses(prev => ({
-      ...prev,
-      [callId]: {
-        ...prev[callId],
-        ...updates,
-      },
-    }))
-  }
-
-  // Check if all jobs are complete
+  // Poll for job status updates from database
   useEffect(() => {
-    const allJobs = Object.values(jobStatuses)
-    if (allJobs.length === 0) return
+    if (!isPolling) return
 
-    const completedJobs = allJobs.filter(job => 
-      job.status === 'completed' || job.status === 'failed'
-    )
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
 
-    if (completedJobs.length === allJobs.length && isProcessing) {
-      setIsProcessing(false)
-      const results = {
-        success: allJobs.filter(job => job.status === 'completed' && !job.cached).length,
-        failed: allJobs.filter(job => job.status === 'failed').length,
-        cached: allJobs.filter(job => job.status === 'completed' && job.cached).length,
-        errors: allJobs
-          .filter(job => job.status === 'failed' && job.error)
-          .map(job => `${job.filename}: ${job.error}`)
+        // Get updated job statuses from database
+        const callIds = jobs.map(job => job.callId)
+        const { data: updatedJobs, error } = await supabase
+          .from('insights_jobs')
+          .select('id, call_id, status, error_message, completed_at, cached, metadata')
+          .in('call_id', callIds)
+
+        if (error) {
+          console.error('Error polling job statuses:', error)
+          return
+        }
+
+        // Update job statuses
+        setJobStatuses(prev => {
+          const updated = { ...prev }
+          updatedJobs?.forEach(job => {
+            if (updated[job.call_id]) {
+              const metadata = job.metadata as any
+              updated[job.call_id] = {
+                ...updated[job.call_id],
+                status: job.status as any,
+                error: job.error_message || undefined,
+                cached: job.cached || false,
+                progress: metadata?.progress || (job.status === 'completed' ? 100 : job.status === 'failed' ? 100 : 50),
+                stage: metadata?.stage || 'analyzing',
+                message: metadata?.message,
+              }
+            }
+          })
+          return updated
+        })
+
+        // Check if all jobs are complete
+        const allJobs = Object.values(jobStatuses)
+        if (allJobs.length === 0) return
+
+        const completedJobs = allJobs.filter(job => 
+          job.status === 'completed' || job.status === 'failed'
+        )
+
+        if (completedJobs.length === allJobs.length && allJobs.length > 0) {
+          setIsPolling(false)
+          const results = {
+            success: allJobs.filter(job => job.status === 'completed' && !job.cached).length,
+            failed: allJobs.filter(job => job.status === 'failed').length,
+            cached: allJobs.filter(job => job.status === 'completed' && job.cached).length,
+            errors: allJobs
+              .filter(job => job.status === 'failed' && job.error)
+              .map(job => `${job.filename}: ${job.error}`)
+          }
+          onComplete(results)
+        }
+      } catch (error) {
+        console.error('Error in polling loop:', error)
       }
-      onComplete(results)
-    }
-  }, [jobStatuses, isProcessing, onComplete])
+    }, 3000) // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [isPolling, jobs, jobStatuses, supabase, onComplete])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,14 +151,6 @@ export default function BulkInsightsProgress({
   ).length
   const progressPercentage = totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0
 
-  // Expose update function to parent via window object (for progress updates)
-  useEffect(() => {
-    ;(window as any).updateInsightsJobStatus = updateJobStatus
-    return () => {
-      delete (window as any).updateInsightsJobStatus
-    }
-  }, [])
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden">
@@ -129,7 +161,7 @@ export default function BulkInsightsProgress({
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600"
-            disabled={isProcessing}
+            disabled={isPolling}
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -195,17 +227,22 @@ export default function BulkInsightsProgress({
                         currentJob.status
                       )}`}
                       style={{ 
-                        width: currentJob.status === 'completed' ? '100%' : 
-                              currentJob.status === 'failed' ? '100%' : 
-                              currentJob.status === 'processing' ? '50%' :
-                              '0%'
+                        width: `${currentJob.progress || (
+                          currentJob.status === 'completed' ? 100 : 
+                          currentJob.status === 'failed' ? 100 : 
+                          currentJob.status === 'processing' ? 50 : 0
+                        )}%`
                       }}
                     />
                   </div>
-                  {/* Progress text */}
+                  {/* Progress text with stage info */}
                   {currentJob.status === 'processing' && (
                     <div className="text-xs text-gray-500 mt-1">
-                      Analyzing transcript with AI...
+                      {currentJob.stage && currentJob.message 
+                        ? `${currentJob.stage}: ${currentJob.message}` 
+                        : currentJob.message 
+                        ? currentJob.message
+                        : 'Analyzing transcript with AI...'}
                     </div>
                   )}
                   {currentJob.cached && currentJob.status === 'completed' && (
@@ -227,7 +264,7 @@ export default function BulkInsightsProgress({
         </div>
 
         {/* Summary Stats */}
-        {!isProcessing && (
+        {!isPolling && (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex justify-around text-sm">
               <div className="text-center">
@@ -258,7 +295,7 @@ export default function BulkInsightsProgress({
             onClick={onCancel}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            {isProcessing ? 'Cancel' : 'Close'}
+            {isPolling ? 'Cancel' : 'Close'}
           </button>
         </div>
       </div>
