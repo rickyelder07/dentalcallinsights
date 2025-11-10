@@ -226,6 +226,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           transcriptId: call.transcript.id,
           callDuration: call.call_duration_seconds,
+          forceRegenerate, // Pass forceRegenerate flag to worker
         },
       })
     } catch (inngestError) {

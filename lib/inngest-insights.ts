@@ -23,11 +23,11 @@ export const generateCallInsights = inngest.createFunction(
   },
   { event: 'insights/start' },
   async ({ event, step }) => {
-    const { callId, userId, transcriptId, callDuration } = event.data
+    const { callId, userId, transcriptId, callDuration, forceRegenerate = false } = event.data
 
     const supabase = createAdminClient()
 
-    console.log(`Starting insights generation for call ${callId}, job ${event.id}`)
+    console.log(`Starting insights generation for call ${callId}, job ${event.id}, forceRegenerate: ${forceRegenerate}`)
 
     // Step 1: Fetch transcript
     const transcript = await step.run('fetch-transcript', async () => {
@@ -52,41 +52,48 @@ export const generateCallInsights = inngest.createFunction(
       return transcriptText
     })
 
-    // Step 2: Check for cached insights
-    const cachedInsights = await step.run('check-cache', async () => {
-      await updateInsightsProgress(callId, event.id, 20, 'analyzing', 'Checking cache...')
+    // Step 2: Check for cached insights (skip if forcing regeneration)
+    let cachedInsights = null
+    
+    if (!forceRegenerate) {
+      cachedInsights = await step.run('check-cache', async () => {
+        await updateInsightsProgress(callId, event.id, 20, 'analyzing', 'Checking cache...')
 
-      const { data } = await supabase
-        .from('insights')
-        .select('*')
-        .eq('call_id', callId)
-        .single()
-
-      return data
-    })
-
-    if (cachedInsights) {
-      // Use cached insights
-      await step.run('use-cached', async () => {
-        console.log(`Using cached insights for call ${callId}`)
-        await updateInsightsProgress(callId, event.id, 100, 'saving', 'Using cached insights')
-
-        // Update job status
-        await supabase
-          .from('insights_jobs')
-          .update({
-            status: 'completed',
-            cached: true,
-            completed_at: new Date().toISOString(),
-            metadata: { progress: 100, stage: 'saving', message: 'Used cached insights' },
-          })
+        const { data } = await supabase
+          .from('insights')
+          .select('*')
           .eq('call_id', callId)
-          .eq('user_id', userId)
+          .single()
 
-        await markInsightsComplete(callId, event.id, cachedInsights, true)
+        return data
       })
 
-      return { success: true, cached: true, insights: cachedInsights }
+      if (cachedInsights) {
+        // Use cached insights
+        await step.run('use-cached', async () => {
+          console.log(`Using cached insights for call ${callId}`)
+          await updateInsightsProgress(callId, event.id, 100, 'saving', 'Using cached insights')
+
+          // Update job status
+          await supabase
+            .from('insights_jobs')
+            .update({
+              status: 'completed',
+              cached: true,
+              completed_at: new Date().toISOString(),
+              metadata: { progress: 100, stage: 'saving', message: 'Used cached insights' },
+            })
+            .eq('call_id', callId)
+            .eq('user_id', userId)
+
+          await markInsightsComplete(callId, event.id, cachedInsights, true)
+        })
+
+        return { success: true, cached: true, insights: cachedInsights }
+      }
+    } else {
+      console.log(`Force regenerate enabled - skipping cache check for call ${callId}`)
+      await updateInsightsProgress(callId, event.id, 20, 'analyzing', 'Force regenerating...')
     }
 
     // Step 3: Generate insights with GPT

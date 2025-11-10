@@ -60,6 +60,7 @@ export interface InsightsEvents {
       userId: string
       transcriptId: string
       callDuration?: number
+      forceRegenerate?: boolean
     }
   }
   'insights/progress': {
