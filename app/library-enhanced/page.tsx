@@ -82,14 +82,15 @@ export default function EnhancedLibraryPage() {
   }, [])
 
   // Refresh calls when returning from other pages (e.g., after generating insights)
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchCalls()
-    }
-    
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
+  // COMMENTED OUT: This was causing page to reload every time user switches tabs
+  // useEffect(() => {
+  //   const handleFocus = () => {
+  //     fetchCalls()
+  //   }
+  //   
+  //   window.addEventListener('focus', handleFocus)
+  //   return () => window.removeEventListener('focus', handleFocus)
+  // }, [])
 
   useEffect(() => {
     applyAllFilters()

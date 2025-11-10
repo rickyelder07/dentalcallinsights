@@ -99,6 +99,60 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Check if call is "No Call Recording" - auto-complete
+    if (call.filename === 'No Call Recording') {
+      console.log('No Call Recording detected - auto-completing transcription')
+      
+      // Create completed transcript record
+      const { error: upsertError } = await supabase
+        .from('transcripts')
+        .upsert(
+          {
+            call_id: callId,
+            transcript: 'No recording available for this call.',
+            raw_transcript: 'No recording available for this call.',
+            transcription_status: 'completed',
+            confidence_score: 0,
+            processing_started_at: new Date().toISOString(),
+            processing_completed_at: new Date().toISOString(),
+            edit_count: 0,
+          },
+          { onConflict: 'call_id' }
+        )
+
+      if (upsertError) {
+        console.error('Failed to create No Call Recording transcript:', upsertError)
+      }
+
+      // Create completed job record
+      const { error: jobError } = await supabase
+        .from('transcription_jobs')
+        .upsert(
+          {
+            call_id: callId,
+            user_id: user.id,
+            status: 'completed',
+            started_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+            metadata: { auto_completed: true, reason: 'No Call Recording' },
+          },
+          { onConflict: 'call_id' }
+        )
+
+      if (jobError) {
+        console.error('Failed to create No Call Recording job:', jobError)
+      }
+
+      return NextResponse.json(
+        {
+          message: 'No recording available - transcription marked as complete',
+          status: 'completed',
+          autoCompleted: true,
+        },
+        { status: 200 }
+      )
+    }
+
     // Log call duration for debugging
     console.log(`Call duration: ${call.call_duration_seconds} seconds`)
     

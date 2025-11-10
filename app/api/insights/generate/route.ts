@@ -2,15 +2,14 @@
  * Insights Generation API Route
  * POST /api/insights/generate
  * 
- * Generates AI insights for a call transcript
- * Implements caching to avoid redundant API calls
+ * Creates a background job to generate AI insights for a call transcript
+ * Uses Inngest for reliable background processing with retries
  * Security: Server-side only, validates user access via RLS
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
-import { generateInsightsWithRetry } from '@/lib/openai-insights'
-import { generateTranscriptHash, isCacheValid } from '@/lib/insights-cache'
+import { inngest } from '@/lib/inngest'
 import type { GenerateInsightsRequest } from '@/types/insights'
 
 export const dynamic = 'force-dynamic'
@@ -57,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Get call and verify ownership
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('*')
+      .select('id, call_duration_seconds, user_id, filename, transcript:transcripts!inner(id, transcript, edited_transcript, transcription_status)')
       .eq('id', callId)
       .eq('user_id', user.id)
       .single()
@@ -68,156 +67,171 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       )
     }
-    
-    // Get transcript
-    const { data: transcript, error: transcriptError } = await supabase
-      .from('transcripts')
-      .select('*')
-      .eq('call_id', callId)
-      .single()
-    
-    if (transcriptError || !transcript) {
-      return NextResponse.json(
-        { error: 'Transcript not found for this call' },
-        { status: 404 }
-      )
+
+    // Check if call is "No Call Recording" - auto-complete
+    if (call.filename === 'No Call Recording') {
+      console.log('No Call Recording detected - auto-completing insights job')
+      
+      // Create completed insights record with placeholder data
+      const { error: insightsError } = await supabase
+        .from('call_insights')
+        .upsert({
+          call_id: callId,
+          summary: {
+            brief: 'No recording available for this call.',
+            key_points: [],
+            outcome: 'no_recording'
+          },
+          sentiment: {
+            overall: 'neutral',
+            patient_satisfaction: 'neutral',
+            staff_performance: 'neutral'
+          },
+          action_items: [],
+          red_flags: [],
+          metadata: {
+            generated_at: new Date().toISOString(),
+            auto_completed: true,
+            reason: 'No Call Recording'
+          }
+        })
+
+      if (insightsError) {
+        console.error('Failed to create No Call Recording insights:', insightsError)
+      }
+
+      // Create completed job record
+      const { error: jobError } = await supabase
+        .from('insights_jobs')
+        .upsert({
+          call_id: callId,
+          user_id: user.id,
+          status: 'completed',
+          cached: false,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          metadata: { auto_completed: true, reason: 'No Call Recording', progress: 100 }
+        })
+
+      if (jobError) {
+        console.error('Failed to create No Call Recording insights job:', jobError)
+      }
+
+      return NextResponse.json({
+        success: true,
+        status: 'completed',
+        autoCompleted: true,
+        message: 'No recording available - insights marked as complete'
+      })
     }
     
     // Check if transcript is completed
-    if (transcript.transcription_status !== 'completed') {
+    if (call.transcript.transcription_status !== 'completed') {
       return NextResponse.json(
-        { error: `Transcript not ready. Status: ${transcript.transcription_status}` },
+        { error: `Transcript not ready. Status: ${call.transcript.transcription_status}` },
         { status: 400 }
       )
     }
     
-    // Get transcript text (prefer edited over raw)
-    const transcriptText =
-      transcript.edited_transcript || transcript.raw_transcript || transcript.transcript
-    
-    if (!transcriptText) {
-      return NextResponse.json(
-        { error: 'Transcript text is empty' },
-        { status: 400 }
-      )
-    }
-    
-    // Generate hash for caching
-    const currentHash = generateTranscriptHash(transcriptText)
-    
-    // Check for existing insights (permanent storage)
-    // Insights are generated ONCE and stored permanently in database
-    // They are only regenerated if:
-    // 1. forceRegenerate is true (user clicked "Regenerate")
-    // 2. Transcript has changed (transcript_hash differs)
-    // 3. Cache has expired (>30 days old)
+    // Check for existing insights (if not forcing regeneration)
     if (!forceRegenerate) {
       const { data: existingInsights } = await supabase
-        .from('insights')
+        .from('call_insights')
         .select('*')
         .eq('call_id', callId)
         .single()
       
       if (existingInsights) {
-        // Check if cache is still valid
-        const cacheValid = isCacheValid(
-          existingInsights.generated_at,
-          existingInsights.transcript_hash,
-          currentHash
-        )
-        
-        if (cacheValid) {
-          // Return existing insights from database (no OpenAI API call)
-          return NextResponse.json({
-            success: true,
-            cached: true,
-            insights: {
-              summary: {
-                brief: existingInsights.summary_brief,
-                key_points: existingInsights.summary_key_points,
-                outcome: existingInsights.call_outcome,
-              },
-              sentiment: {
-                overall: existingInsights.overall_sentiment,
-                patient_satisfaction: existingInsights.patient_satisfaction,
-                staff_performance: existingInsights.staff_performance,
-              },
-              action_items: existingInsights.action_items,
-              red_flags: existingInsights.red_flags,
-            },
-          })
-        }
-        
-        // If we reach here, cache is invalid (transcript changed or expired)
-        // Will regenerate below
+        // Return cached insights immediately (no job needed)
+        return NextResponse.json({
+          success: true,
+          cached: true,
+          insights: existingInsights,
+        })
       }
     }
     
-    // Generate insights with GPT-4o-mini (only called if no valid cached insights exist)
-    // This ensures we only make an OpenAI API call once per transcript
-    const result = await generateInsightsWithRetry(
-      transcriptText,
-      call.call_duration_seconds
-    )
+    // Check if job already exists and is processing
+    const { data: existingJob } = await supabase
+      .from('insights_jobs')
+      .select('*')
+      .eq('call_id', callId)
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'processing'])
+      .single()
     
-    if (!result.success) {
+    if (existingJob) {
       return NextResponse.json(
-        { error: result.error || 'Failed to generate insights' },
-        { status: 500 }
-      )
-    }
-    
-    if (!result.insights) {
-      return NextResponse.json(
-        { error: 'No insights generated' },
-        { status: 500 }
-      )
-    }
-    
-    // Save insights to database permanently (upsert)
-    // Uses UPSERT to handle both initial creation and regeneration
-    // The unique constraint on call_id ensures one insight record per call
-    const { error: upsertError } = await supabase
-      .from('insights')
-      .upsert(
         {
-          call_id: callId,
-          user_id: user.id,
-          summary_brief: result.insights.summary.brief,
-          summary_key_points: result.insights.summary.key_points,
-          call_outcome: result.insights.summary.outcome,
-          overall_sentiment: result.insights.sentiment.overall,
-          patient_satisfaction: result.insights.sentiment.patient_satisfaction,
-          staff_performance: result.insights.sentiment.staff_performance,
-          action_items: result.insights.action_items,
-          red_flags: result.insights.red_flags,
-          model_used: 'gpt-4o-mini',
-          transcript_hash: currentHash,
-          generated_at: new Date().toISOString(),
+          success: true,
+          jobId: existingJob.id,
+          status: existingJob.status,
+          message: 'Insights generation already in progress',
         },
-        {
-          onConflict: 'call_id', // Update if exists, insert if not
-        }
+        { status: 200 }
       )
-    
-    if (upsertError) {
-      console.error('Failed to save insights:', upsertError)
-      // Still return insights even if save fails
-      return NextResponse.json({
-        success: true,
-        cached: false,
-        insights: result.insights,
-        warning: 'Insights generated but failed to save to database',
-      })
     }
     
-    // Return insights
+    // Create insights job
+    const jobData = {
+      call_id: callId,
+      user_id: user.id,
+      status: 'processing',
+      started_at: new Date().toISOString(),
+      metadata: { progress: 0, stage: 'starting' },
+    }
+    
+    const { data: newJob, error: createError } = await supabase
+      .from('insights_jobs')
+      .insert(jobData)
+      .select('id')
+      .single()
+    
+    if (createError || !newJob) {
+      console.error('Failed to create insights job:', createError)
+      return NextResponse.json(
+        { error: 'Failed to create insights job' },
+        { status: 500 }
+      )
+    }
+    
+    // Trigger Inngest background job
+    try {
+      await inngest.send({
+        name: 'insights/start',
+        data: {
+          callId,
+          userId: user.id,
+          transcriptId: call.transcript.id,
+          callDuration: call.call_duration_seconds,
+        },
+      })
+    } catch (inngestError) {
+      console.error('Failed to send Inngest event:', inngestError)
+      
+      // Mark job as failed
+      await supabase
+        .from('insights_jobs')
+        .update({
+          status: 'failed',
+          error_message: 'Failed to queue background job',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', newJob.id)
+      
+      return NextResponse.json(
+        { error: 'Failed to start background job processing' },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json({
       success: true,
-      cached: false,
-      insights: result.insights,
-      tooShort: result.tooShort || false,
+      jobId: newJob.id,
+      status: 'processing',
+      message: 'Insights generation started',
     })
+    
   } catch (error) {
     console.error('Insights generation API error:', error)
     return NextResponse.json(
@@ -229,4 +243,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-
