@@ -58,6 +58,19 @@ export default function InsightsPanel({
         .eq('call_id', callId)
         .single()
       
+      // Log the error for debugging
+      if (fetchError) {
+        console.log('Fetch insights error:', fetchError)
+        // If error is 406 (PGRST116), it means no rows found - this is expected for first time
+        // Continue to generate insights
+        if (fetchError.code !== 'PGRST116') {
+          console.error('Unexpected error fetching insights:', fetchError)
+          setError(`Failed to fetch insights: ${fetchError.message}`)
+          setIsLoading(false)
+          return
+        }
+      }
+      
       // If insights exist, use them (no API call)
       if (existingInsights && !fetchError) {
         const cachedInsights = {
