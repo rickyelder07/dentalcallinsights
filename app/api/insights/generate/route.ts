@@ -155,6 +155,8 @@ export async function POST(req: NextRequest) {
           insights: formattedInsights,
         })
       }
+    } else {
+      console.log('Force regenerate enabled - will overwrite existing insights')
     }
     
     // Check if job already exists and is processing
@@ -166,7 +168,16 @@ export async function POST(req: NextRequest) {
       .in('status', ['pending', 'processing'])
       .single()
     
-    if (existingJob) {
+    // If forcing regeneration and job exists, cancel it and create new one
+    if (existingJob && forceRegenerate) {
+      console.log('Cancelling existing job for regeneration:', existingJob.id)
+      // Delete the old job - a new one will be created below
+      await supabase
+        .from('insights_jobs')
+        .delete()
+        .eq('id', existingJob.id)
+    } else if (existingJob) {
+      // Normal case: job already in progress
       return NextResponse.json(
         {
           success: true,

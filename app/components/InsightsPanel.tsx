@@ -127,6 +127,14 @@ export default function InsightsPanel({
   }
   
   const handleRegenerate = async () => {
+    const confirmed = window.confirm(
+      'Regenerate AI insights?\n\n' +
+      'This will create new insights from the transcript and overwrite the existing ones.\n\n' +
+      'Note: This process may take 10-30 seconds.'
+    )
+    
+    if (!confirmed) return
+    
     try {
       setIsRegenerating(true)
       setError(null)
@@ -140,7 +148,7 @@ export default function InsightsPanel({
         return
       }
       
-      // Force regeneration (updates existing record in database)
+      // Force regeneration (will overwrite existing insights in database)
       const response = await fetch('/api/insights/regenerate', {
         method: 'POST',
         headers: {
@@ -157,19 +165,85 @@ export default function InsightsPanel({
         return
       }
       
-      if (data.success && data.insights) {
+      // Check if it's a background job (status: processing)
+      if (data.status === 'processing' || data.jobId) {
+        // Background job started - poll for completion
+        alert('Insights regeneration started! This will take 10-30 seconds. The page will refresh automatically.')
+        pollForInsightsCompletion()
+      } else if (data.success && data.insights) {
+        // Immediate response (cached or quick generation)
         setInsights(data.insights)
         setCached(false) // Mark as fresh (not cached)
         onInsightsGenerated?.(data.insights)
+        alert('Insights regenerated successfully!')
       } else {
         setError('No insights generated')
       }
     } catch (err) {
       console.error('Error regenerating insights:', err)
       setError(err instanceof Error ? err.message : 'Failed to regenerate insights')
-    } finally {
       setIsRegenerating(false)
     }
+  }
+  
+  // Poll for insights completion when running as background job
+  const pollForInsightsCompletion = () => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: updatedInsights, error: fetchError } = await supabase
+          .from('insights')
+          .select('*')
+          .eq('call_id', callId)
+          .single()
+        
+        // Check job status
+        const { data: job } = await supabase
+          .from('insights_jobs')
+          .select('status')
+          .eq('call_id', callId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (job?.status === 'completed' && updatedInsights) {
+          clearInterval(pollInterval)
+          
+          // Format and display insights
+          const formattedInsights = {
+            summary: {
+              brief: '',
+              key_points: updatedInsights.key_points || [],
+              outcome: updatedInsights.call_outcome || '',
+            },
+            sentiment: {
+              overall: updatedInsights.overall_sentiment || 'neutral',
+              patient_satisfaction: 'neutral',
+              staff_performance: updatedInsights.staff_performance || 'professional',
+            },
+            action_items: updatedInsights.action_items || [],
+            red_flags: updatedInsights.red_flags || [],
+          }
+          
+          setInsights(formattedInsights)
+          setCached(false)
+          onInsightsGenerated?.(formattedInsights)
+          setIsRegenerating(false)
+          alert('Insights regenerated successfully!')
+        } else if (job?.status === 'failed') {
+          clearInterval(pollInterval)
+          setError('Insights regeneration failed')
+          setIsRegenerating(false)
+        }
+      } catch (err) {
+        console.error('Error polling insights status:', err)
+      }
+    }, 3000) // Poll every 3 seconds
+    
+    // Stop polling after 2 minutes
+    setTimeout(() => {
+      clearInterval(pollInterval)
+      setIsRegenerating(false)
+    }, 2 * 60 * 1000)
   }
   
   const handleExport = (format: 'text' | 'json') => {
