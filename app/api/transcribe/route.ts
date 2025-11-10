@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
     console.log('Transcription API called')
     
     // Parse request body
-    const body: TranscriptionRequest = await req.json()
-    const { callId, language, prompt } = body
-    console.log('Request body parsed:', { callId, language, prompt })
+    const body: TranscriptionRequest & { forceRetranscribe?: boolean } = await req.json()
+    const { callId, language, prompt, forceRetranscribe = false } = body
+    console.log('Request body parsed:', { callId, language, prompt, forceRetranscribe })
 
     // Validate input
     if (!callId) {
@@ -195,25 +195,29 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check if transcription already exists
-    const { data: existingTranscript } = await supabase
-      .from('transcripts')
-      .select('id, transcription_status')
-      .eq('call_id', callId)
-      .single()
+    // Check if transcription already exists (skip if forcing re-transcription)
+    if (!forceRetranscribe) {
+      const { data: existingTranscript } = await supabase
+        .from('transcripts')
+        .select('id, transcription_status')
+        .eq('call_id', callId)
+        .single()
 
-    if (
-      existingTranscript &&
-      (existingTranscript.transcription_status === 'completed' ||
-        existingTranscript.transcription_status === 'processing')
-    ) {
-      return NextResponse.json(
-        {
-          error: `Transcription already ${existingTranscript.transcription_status}`,
-          transcriptId: existingTranscript.id,
-        },
-        { status: 409 }
-      )
+      if (
+        existingTranscript &&
+        (existingTranscript.transcription_status === 'completed' ||
+          existingTranscript.transcription_status === 'processing')
+      ) {
+        return NextResponse.json(
+          {
+            error: `Transcription already ${existingTranscript.transcription_status}`,
+            transcriptId: existingTranscript.id,
+          },
+          { status: 409 }
+        )
+      }
+    } else {
+      console.log('Force re-transcribe enabled - will overwrite existing transcript')
     }
 
     // Check if job already exists
@@ -223,7 +227,7 @@ export async function POST(req: NextRequest) {
       .eq('call_id', callId)
       .single()
 
-    if (existingJob && existingJob.status === 'processing') {
+    if (existingJob && existingJob.status === 'processing' && !forceRetranscribe) {
       return NextResponse.json(
         {
           error: 'Transcription already in progress',
@@ -231,6 +235,12 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 }
       )
+    }
+    
+    // If force retranscribe and job is processing, we'll overwrite it
+    if (forceRetranscribe && existingJob && existingJob.status === 'processing') {
+      console.log('Cancelling existing processing job for re-transcription')
+      // The new job creation below will overwrite this
     }
 
     // Create or update transcription job

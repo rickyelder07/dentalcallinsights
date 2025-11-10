@@ -244,7 +244,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         throw new Error('Not authenticated')
       }
 
-      // Call the transcribe API
+      // Call the transcribe API with forceRetranscribe flag
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         headers: {
@@ -253,6 +253,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         },
         body: JSON.stringify({
           callId: callId,
+          forceRetranscribe: true,
         }),
       })
 
