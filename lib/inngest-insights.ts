@@ -113,20 +113,25 @@ export const generateCallInsights = inngest.createFunction(
       // Map new format to old insights table schema
       const { error } = await supabase
         .from('insights')
-        .upsert({
-          call_id: callId,
-          user_id: userId,
-          overall_sentiment: insights.sentiment?.overall || 'neutral',
-          key_points: insights.summary?.key_points || [],
-          action_items: insights.action_items || [],
-          red_flags: insights.red_flags || [],
-          call_outcome: insights.summary?.outcome || '',
-          staff_performance: insights.sentiment?.staff_performance || 'professional',
-          patient_satisfaction_score: null, // Not in new format
-          appointment_scheduled: false, // Not in new format
-          appointment_cancelled: false, // Not in new format
-          model_used: 'gpt-4o-mini',
-        })
+        .upsert(
+          {
+            call_id: callId,
+            user_id: userId,
+            overall_sentiment: insights.sentiment?.overall || 'neutral',
+            key_points: insights.summary?.key_points || [],
+            action_items: insights.action_items || [],
+            red_flags: insights.red_flags || [],
+            call_outcome: insights.summary?.outcome || '',
+            staff_performance: insights.sentiment?.staff_performance || 'professional',
+            patient_satisfaction_score: null, // Not in new format
+            appointment_scheduled: false, // Not in new format
+            appointment_cancelled: false, // Not in new format
+            model_used: 'gpt-4o-mini',
+          },
+          {
+            onConflict: 'call_id', // Use call_id for conflict resolution (unique constraint)
+          }
+        )
 
       if (error) {
         throw new Error(`Failed to save insights: ${error.message}`)

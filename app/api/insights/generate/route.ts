@@ -75,17 +75,22 @@ export async function POST(req: NextRequest) {
       // Create completed insights record with placeholder data using correct schema
       const { error: insightsError } = await supabase
         .from('insights')
-        .upsert({
-          call_id: callId,
-          user_id: user.id,
-          overall_sentiment: 'neutral',
-          key_points: ['No recording available for this call.'],
-          action_items: [],
-          red_flags: [],
-          call_outcome: 'no_recording',
-          staff_performance: 'professional',
-          model_used: 'N/A - No Recording',
-        })
+        .upsert(
+          {
+            call_id: callId,
+            user_id: user.id,
+            overall_sentiment: 'neutral',
+            key_points: ['No recording available for this call.'],
+            action_items: [],
+            red_flags: [],
+            call_outcome: 'no_recording',
+            staff_performance: 'professional',
+            model_used: 'N/A - No Recording',
+          },
+          {
+            onConflict: 'call_id', // Use call_id for conflict resolution
+          }
+        )
 
       if (insightsError) {
         console.error('Failed to create No Call Recording insights:', insightsError)
