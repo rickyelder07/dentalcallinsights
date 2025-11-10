@@ -46,7 +46,55 @@ export interface TranscriptionEvents {
       stage: 'download' | 'transcription' | 'processing' | 'save'
     }
   }
+  'transcription/cancel': {
+    data: {
+      callId: string
+    }
+  }
 }
+
+export interface InsightsEvents {
+  'insights/start': {
+    data: {
+      callId: string
+      userId: string
+      transcriptId: string
+      callDuration?: number
+    }
+  }
+  'insights/progress': {
+    data: {
+      callId: string
+      jobId: string
+      progress: number
+      stage: 'fetching' | 'analyzing' | 'saving'
+      message?: string
+    }
+  }
+  'insights/complete': {
+    data: {
+      callId: string
+      jobId: string
+      insights: any
+      cached: boolean
+    }
+  }
+  'insights/failed': {
+    data: {
+      callId: string
+      jobId: string
+      error: string
+      stage: 'fetch' | 'analysis' | 'save'
+    }
+  }
+  'insights/cancel': {
+    data: {
+      callId: string
+    }
+  }
+}
+
+export type AllEvents = TranscriptionEvents & InsightsEvents
 
 // Create Inngest client
 export const inngest = new Inngest({
@@ -123,5 +171,65 @@ export async function markTranscriptionFailed(
     jobId,
     error,
     stage,
+  })
+}
+
+// ============================================
+// INSIGHTS EVENT HELPERS
+// ============================================
+
+// Helper function to send insights progress updates
+export async function updateInsightsProgress(
+  callId: string,
+  jobId: string,
+  progress: number,
+  stage: 'fetching' | 'analyzing' | 'saving',
+  message?: string
+) {
+  await inngest.send({
+    name: 'insights/progress',
+    data: {
+      callId,
+      jobId,
+      progress,
+      stage,
+      message,
+    },
+  })
+}
+
+// Helper function to mark insights complete
+export async function markInsightsComplete(
+  callId: string,
+  jobId: string,
+  insights: any,
+  cached: boolean
+) {
+  await inngest.send({
+    name: 'insights/complete',
+    data: {
+      callId,
+      jobId,
+      insights,
+      cached,
+    },
+  })
+}
+
+// Helper function to mark insights failed
+export async function markInsightsFailed(
+  callId: string,
+  jobId: string,
+  error: string,
+  stage: 'fetch' | 'analysis' | 'save'
+) {
+  await inngest.send({
+    name: 'insights/failed',
+    data: {
+      callId,
+      jobId,
+      error,
+      stage,
+    },
   })
 }
