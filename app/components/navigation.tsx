@@ -79,7 +79,8 @@ export default function Navigation() {
                   
                   {/* Dropdown Menu */}
                   {analyticsDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <div className="absolute top-full left-0 pt-1 w-48 z-50">
+                      <div className="bg-white border border-gray-200 rounded-md shadow-lg">
                       <Link
                         href="/caller-analytics"
                         className={`block px-4 py-2 text-sm transition ${
@@ -120,6 +121,7 @@ export default function Navigation() {
                       >
                         QA
                       </Link>
+                      </div>
                     </div>
                   )}
                 </div>

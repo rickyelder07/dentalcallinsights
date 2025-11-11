@@ -7,10 +7,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase'
 import SentimentPieChart from '../components/SentimentPieChart'
 import SatisfactionGauge from '../components/SatisfactionGauge'
 import { HorizontalBars } from '../components/HorizontalBar'
+import { formatCallTime } from '@/lib/datetime'
 import type { CallerOverview, CallerPerformanceMetrics } from '@/types/analytics'
 
 type TabType = 'overview' | 'by-caller'
@@ -37,6 +39,10 @@ export default function CallerAnalyticsPage() {
   const [performanceData, setPerformanceData] = useState<CallerPerformanceMetrics | null>(null)
   const [performanceLoading, setPerformanceLoading] = useState(false)
   const [performanceError, setPerformanceError] = useState<string | null>(null)
+  const [negativeCalls, setNegativeCalls] = useState<Array<{ id: string; filename: string; call_time: string; call_duration_seconds: number }>>([])
+  const [negativeCallsLoading, setNegativeCallsLoading] = useState(false)
+  const [longestCalls, setLongestCalls] = useState<Array<{ id: string; filename: string; call_time: string; call_duration_seconds: number }>>([])
+  const [longestCallsLoading, setLongestCallsLoading] = useState(false)
 
   // Fetch overview data when tab is active or date filters change
   useEffect(() => {
@@ -49,6 +55,8 @@ export default function CallerAnalyticsPage() {
   useEffect(() => {
     if (activeTab === 'by-caller' && selectedExtension) {
       fetchPerformanceData()
+      fetchNegativeCalls()
+      fetchLongestCalls()
     }
   }, [selectedExtension, dateRangeStart, dateRangeEnd])
 
@@ -166,6 +174,135 @@ export default function CallerAnalyticsPage() {
       setPerformanceError(error instanceof Error ? error.message : 'Failed to load data')
     } finally {
       setPerformanceLoading(false)
+    }
+  }
+
+  const fetchNegativeCalls = async () => {
+    if (!selectedExtension) return
+
+    try {
+      setNegativeCallsLoading(true)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      // Build date filters
+      let startDateISO: string | undefined
+      let endDateISO: string | undefined
+      
+      if (dateRangeStart) {
+        const [startYear, startMonth, startDay] = dateRangeStart.split('-').map(Number)
+        const startDateLocal = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0)
+        startDateISO = startDateLocal.toISOString()
+      }
+      if (dateRangeEnd) {
+        const [endYear, endMonth, endDay] = dateRangeEnd.split('-').map(Number)
+        const endDateLocal = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+        endDateISO = endDateLocal.toISOString()
+      }
+
+      // Join with insights table to filter by negative sentiment
+      let query = supabase
+        .from('calls')
+        .select(`
+          id,
+          filename,
+          call_time,
+          call_duration_seconds,
+          insights!inner(overall_sentiment)
+        `)
+        .eq('user_id', session.user.id)
+        .eq('source_extension', selectedExtension)
+        .eq('insights.overall_sentiment', 'negative')
+        .order('call_time', { ascending: false })
+
+      if (startDateISO) {
+        query = query.gte('call_time', startDateISO)
+      }
+      if (endDateISO) {
+        query = query.lte('call_time', endDateISO)
+      }
+
+      const { data: calls, error } = await query
+
+      if (error) throw error
+
+      setNegativeCalls((calls || []).map(call => ({
+        id: call.id,
+        filename: call.filename,
+        call_time: call.call_time,
+        call_duration_seconds: call.call_duration_seconds || 0,
+      })))
+    } catch (error) {
+      console.error('Error fetching negative calls:', error)
+      setNegativeCalls([])
+    } finally {
+      setNegativeCallsLoading(false)
+    }
+  }
+
+  const fetchLongestCalls = async () => {
+    if (!selectedExtension) return
+
+    try {
+      setLongestCallsLoading(true)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      // Build date filters
+      let startDateISO: string | undefined
+      let endDateISO: string | undefined
+      
+      if (dateRangeStart) {
+        const [startYear, startMonth, startDay] = dateRangeStart.split('-').map(Number)
+        const startDateLocal = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0)
+        startDateISO = startDateLocal.toISOString()
+      }
+      if (dateRangeEnd) {
+        const [endYear, endMonth, endDay] = dateRangeEnd.split('-').map(Number)
+        const endDateLocal = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+        endDateISO = endDateLocal.toISOString()
+      }
+
+      // Fetch calls ordered by duration (longest first), limit to 10
+      let query = supabase
+        .from('calls')
+        .select('id, filename, call_time, call_duration_seconds')
+        .eq('user_id', session.user.id)
+        .eq('source_extension', selectedExtension)
+        .not('call_duration_seconds', 'is', null)
+        .order('call_duration_seconds', { ascending: false })
+        .limit(10)
+
+      if (startDateISO) {
+        query = query.gte('call_time', startDateISO)
+      }
+      if (endDateISO) {
+        query = query.lte('call_time', endDateISO)
+      }
+
+      const { data: calls, error } = await query
+
+      if (error) throw error
+
+      setLongestCalls((calls || []).map(call => ({
+        id: call.id,
+        filename: call.filename,
+        call_time: call.call_time,
+        call_duration_seconds: call.call_duration_seconds || 0,
+      })))
+    } catch (error) {
+      console.error('Error fetching longest calls:', error)
+      setLongestCalls([])
+    } finally {
+      setLongestCallsLoading(false)
     }
   }
 
@@ -622,80 +759,112 @@ export default function CallerAnalyticsPage() {
                 </div>
               </div>
 
-              {/* Row 3: Patient Impact & Top Topics */}
+              {/* Row 3: Longest Calls & Negative Calls */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Patient Impact Card */}
+                {/* Longest Calls Card */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Patient Impact</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">New Patient Calls</span>
-                      <span className="text-xl font-semibold text-blue-600">
-                        {performanceData.patientImpact.newPatientCalls}
-                      </span>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Longest Calls</h3>
+                  {longestCallsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
                     </div>
-                    <div className="pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-600">Appointments Scheduled</span>
-                        <span className="text-xl font-semibold text-green-600">
-                          {performanceData.patientImpact.appointmentsScheduled}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-600">Appointments Cancelled</span>
-                        <span className="text-xl font-semibold text-red-600">
-                          {performanceData.patientImpact.appointmentsCancelled}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Estimated Revenue</span>
-                        <span className="text-2xl font-bold text-green-600">
-                          ${performanceData.patientImpact.estimatedRevenue.toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Based on $150 per appointment</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Top Topics Card */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Topics & Patterns</h3>
-                  {performanceData.topTopics.length > 0 ? (
-                    <div className="space-y-3">
-                      {performanceData.topTopics.map((topic, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
-                              {index + 1}
-                            </div>
-                            <span className="text-sm text-gray-700 truncate">{topic.topic}</span>
-                          </div>
-                          <span className="text-sm font-semibold text-gray-900 ml-2">
-                            {topic.count}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  ) : longestCalls.length === 0 ? (
+                    <p className="text-sm text-gray-500">No calls found</p>
                   ) : (
-                    <p className="text-sm text-gray-500">No topic data available</p>
-                  )}
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Patient Satisfaction Breakdown</h4>
-                    <div className="space-y-2">
-                      {Object.entries(performanceData.sentimentAnalysis.patientSatisfactionBreakdown).map(([key, value]) => {
-                        if (value === 0) return null
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                      {longestCalls.map((call) => {
+                        const durationMinutes = Math.floor(call.call_duration_seconds / 60)
+                        const durationSeconds = call.call_duration_seconds % 60
+                        const durationStr = `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`
+                        
                         return (
-                          <div key={key} className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            <span className="font-medium text-gray-900">{value}</span>
-                          </div>
+                          <Link
+                            key={call.id}
+                            href={`/calls/${call.id}`}
+                            className="block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {call.filename || 'Untitled Call'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {formatCallTime(call.call_time, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                                <span className="text-xs font-semibold text-gray-900">
+                                  {durationStr}
+                                </span>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </Link>
                         )
                       })}
                     </div>
-                  </div>
+                  )}
+                </div>
+
+                {/* Negative Calls Card */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Negative Calls</h3>
+                  {negativeCallsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+                    </div>
+                  ) : negativeCalls.length === 0 ? (
+                    <p className="text-sm text-gray-500">No negative calls found</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                      {negativeCalls.map((call) => {
+                        const durationMinutes = Math.floor(call.call_duration_seconds / 60)
+                        const durationSeconds = call.call_duration_seconds % 60
+                        const durationStr = `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`
+                        
+                        return (
+                          <Link
+                            key={call.id}
+                            href={`/calls/${call.id}`}
+                            className="block p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {call.filename || 'Untitled Call'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {formatCallTime(call.call_time, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                                <span className="text-xs text-gray-600">
+                                  {durationStr}
+                                </span>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
