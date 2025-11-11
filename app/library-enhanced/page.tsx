@@ -492,17 +492,37 @@ export default function EnhancedLibraryPage() {
   }
 
   const handleBulkGenerateInsights = async () => {
+    // Filter for calls that need insights: selected, transcript completed, and NO existing insights
     const callsForInsights = filteredCalls.filter((c) => 
       selectedCalls.has(c.id) && 
-      c.transcript?.transcription_status === 'completed'
+      c.transcript?.transcription_status === 'completed' &&
+      !c.insights // Skip calls that already have insights
     )
 
+    // Count calls that were skipped because they already have insights
+    const callsWithInsights = filteredCalls.filter((c) =>
+      selectedCalls.has(c.id) &&
+      c.transcript?.transcription_status === 'completed' &&
+      c.insights
+    ).length
+
     if (callsForInsights.length === 0) {
-      alert('No calls with completed transcripts selected')
+      if (callsWithInsights > 0) {
+        alert(`All ${callsWithInsights} selected call(s) already have insights.\n\nNo new insights to generate.`)
+      } else {
+        alert('No calls with completed transcripts selected')
+      }
       return
     }
 
-    if (!confirm(`Generate AI insights for ${callsForInsights.length} call(s)?\n\nNote: Jobs will continue in the background even if you close this window.`)) {
+    // Show confirmation with info about skipped calls
+    const confirmMessage = callsWithInsights > 0
+      ? `Generate AI insights for ${callsForInsights.length} call(s)?\n\n` +
+        `Note: ${callsWithInsights} call(s) already have insights and will be skipped.\n\n` +
+        `Jobs will continue in the background even if you close this window.`
+      : `Generate AI insights for ${callsForInsights.length} call(s)?\n\nNote: Jobs will continue in the background even if you close this window.`
+
+    if (!confirm(confirmMessage)) {
       return
     }
 
