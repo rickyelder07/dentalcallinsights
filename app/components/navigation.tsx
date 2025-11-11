@@ -5,6 +5,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/app/providers/auth-provider'
@@ -13,6 +14,7 @@ import LogoutButton from './logout-button'
 export default function Navigation() {
   const pathname = usePathname()
   const { user, loading } = useAuth()
+  const [analyticsDropdownOpen, setAnalyticsDropdownOpen] = useState(false)
 
   return (
     <header className="bg-white shadow-sm border-b">
@@ -52,61 +54,75 @@ export default function Navigation() {
                 >
                   Library
                 </Link>
-                <Link
-                  href="/analytics"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    pathname === '/analytics'
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
+                {/* Analytics Dropdown */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setAnalyticsDropdownOpen(true)}
+                  onMouseLeave={() => setAnalyticsDropdownOpen(false)}
                 >
-                  <span className="flex items-center gap-1">
+                  <Link
+                    href="/analytics"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition flex items-center gap-1 ${
+                      pathname === '/analytics' || pathname === '/caller-analytics' || pathname === '/call-highlights' || pathname === '/qa'
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                    }`}
+                  >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     Analytics
-                  </span>
-                </Link>
-                <Link
-                  href="/caller-analytics"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    pathname === '/caller-analytics'
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-1">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                    Caller Analytics
-                  </span>
-                </Link>
-                <Link
-                  href="/call-highlights"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    pathname === '/call-highlights'
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                    Call Highlights
-                  </span>
-                </Link>
-                <Link
-                  href="/qa"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    pathname === '/qa'
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
-                >
-                  QA
-                </Link>
+                  </Link>
+                  
+                  {/* Dropdown Menu */}
+                  {analyticsDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                      <Link
+                        href="/caller-analytics"
+                        className={`block px-4 py-2 text-sm transition ${
+                          pathname === '/caller-analytics'
+                            ? 'bg-primary-50 text-primary-700 font-medium'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          Caller Analytics
+                        </span>
+                      </Link>
+                      <Link
+                        href="/call-highlights"
+                        className={`block px-4 py-2 text-sm transition ${
+                          pathname === '/call-highlights'
+                            ? 'bg-primary-50 text-primary-700 font-medium'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                          </svg>
+                          Call Highlights
+                        </span>
+                      </Link>
+                      <Link
+                        href="/qa"
+                        className={`block px-4 py-2 text-sm transition ${
+                          pathname === '/qa'
+                            ? 'bg-primary-50 text-primary-700 font-medium'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                        }`}
+                      >
+                        QA
+                      </Link>
+                    </div>
+                  )}
+                </div>
                 <Link
                   href="/jobs"
                   className={`px-3 py-2 rounded-md text-sm font-medium transition ${
