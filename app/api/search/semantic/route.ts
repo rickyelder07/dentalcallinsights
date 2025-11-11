@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
     }
     
     // Debug: Check if user has any embeddings
+    // RLS policies will automatically filter to show team members' data
     const { data: userEmbeddings, error: embeddingsError } = await supabase
       .from('embeddings')
       .select('call_id')
-      .eq('user_id', user.id)
       .limit(1)
     
     if (embeddingsError) {

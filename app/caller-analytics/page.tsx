@@ -110,10 +110,10 @@ export default function CallerAnalyticsPage() {
       if (!session) return
 
       // Fetch calls to get unique extensions
+      // RLS policies will automatically filter to show team members' calls
       const { data: calls, error } = await supabase
         .from('calls')
         .select('source_extension')
-        .eq('user_id', session.user.id)
         .not('source_extension', 'is', null)
 
       if (error) throw error
@@ -214,7 +214,7 @@ export default function CallerAnalyticsPage() {
           call_duration_seconds,
           insights!inner(overall_sentiment)
         `)
-        .eq('user_id', session.user.id)
+        // RLS policies will automatically filter to show team members' calls
         .eq('source_extension', selectedExtension)
         .eq('insights.overall_sentiment', 'negative')
         .order('call_time', { ascending: false })
@@ -272,10 +272,10 @@ export default function CallerAnalyticsPage() {
       }
 
       // Fetch calls ordered by duration (longest first), limit to 10
+      // RLS policies will automatically filter to show team members' calls
       let query = supabase
         .from('calls')
         .select('id, filename, call_time, call_duration_seconds')
-        .eq('user_id', session.user.id)
         .eq('source_extension', selectedExtension)
         .not('call_duration_seconds', 'is', null)
         .order('call_duration_seconds', { ascending: false })

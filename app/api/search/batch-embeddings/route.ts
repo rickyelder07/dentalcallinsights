@@ -78,12 +78,12 @@ export async function POST(req: NextRequest) {
     
     for (const callId of callIds) {
       try {
-        // Get call and verify ownership
+        // Get call and verify ownership/access via RLS
+        // RLS policies will automatically filter to show team members' calls
         const { data: call, error: callError } = await supabase
           .from('calls')
           .select('*')
           .eq('id', callId)
-          .eq('user_id', user.id)
           .single()
         
         if (callError || !call) {

@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
           call_duration_seconds
         )
       `)
-      .eq('user_id', user.id)
+      // RLS policies will automatically filter to show team members' data
       .order('scored_at', { ascending: false })
 
     // Apply filters

@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch calls with related data
+    // RLS policies will automatically filter to show team members' calls
     let query = supabase
       .from('calls')
       .select(`
@@ -58,7 +59,6 @@ export async function POST(request: NextRequest) {
         transcript:transcripts(*),
         insights:insights(*)
       `)
-      .eq('user_id', user.id)
 
     // Apply call ID filter if provided
     if (body.callIds && body.callIds.length > 0) {

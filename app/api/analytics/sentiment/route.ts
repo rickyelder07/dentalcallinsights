@@ -65,10 +65,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch insights
+    // RLS policies will automatically filter to show team members' data
     const { data: insights, error: insightsError } = await supabase
       .from('insights')
       .select('*')
-      .eq('user_id', user.id)
 
     if (insightsError) throw insightsError
 

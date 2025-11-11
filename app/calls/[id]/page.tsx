@@ -56,11 +56,12 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       }
 
       // Fetch call details
+      // RLS policies will automatically filter to ensure user can only access
+      // their own calls or calls from team members
       const { data: callData, error: callError } = await supabase
         .from('calls')
         .select('id, user_id, filename, audio_path, file_size, file_type, upload_status, call_time, call_direction, source_number, source_name, source_extension, destination_number, destination_extension, call_duration_seconds, disposition, time_to_answer_seconds, call_flow, is_new_patient, processing_status, error_message, created_at, updated_at')
         .eq('id', callId)
-        .eq('user_id', session.user.id)
         .single()
 
       if (callError || !callData) {

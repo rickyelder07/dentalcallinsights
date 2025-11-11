@@ -45,10 +45,10 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     
     // Get total searches
+    // RLS policies will automatically filter to show team members' data
     let searchQuery = supabase
       .from('search_queries')
       .select('*', { count: 'exact', head: false })
-      .eq('user_id', user.id)
     
     // Fix timezone issue: format dates in local timezone for proper comparison
     if (dateFrom) {
@@ -133,10 +133,10 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => a.date.localeCompare(b.date))
     
     // Get click-through rate
+    // RLS policies will automatically filter to show team members' data
     const { data: clicks, error: clicksError } = await supabase
       .from('search_result_clicks')
       .select('search_query_id')
-      .eq('user_id', user.id)
     
     const searchesWithClicks = new Set(clicks?.map(c => c.search_query_id) || [])
     const clickThroughRate = searches?.length

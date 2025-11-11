@@ -119,10 +119,10 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Fetching calls...')
+    // RLS policies will automatically filter to show team members' calls
     const { data: calls, error: callsError } = await supabase
       .from('calls')
       .select('*')
-      .eq('user_id', user.id)
       .gte('call_time', startDateISO)
       .lte('call_time', endDateISO)
       .order('call_time', { ascending: false })

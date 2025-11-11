@@ -113,6 +113,9 @@ export default function EnhancedLibraryPage() {
       }
 
       // Fetch calls with related data including QA scores
+      // RLS policies will automatically filter to show:
+      // 1. User's own calls
+      // 2. Calls from team members (even if team_id is NULL)
       const { data: callsData, error: fetchError } = await supabase
         .from('calls')
         .select(`
@@ -121,7 +124,6 @@ export default function EnhancedLibraryPage() {
           insights:insights(*),
           qaScore:call_scores(*)
         `)
-        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(10000) // Increase from default 1000 to support larger datasets
 

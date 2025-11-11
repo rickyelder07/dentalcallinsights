@@ -65,12 +65,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch insights and transcripts
+    // RLS policies will automatically filter to show team members' data
     const [insightsResult, transcriptsResult] = await Promise.all([
-      supabase.from('insights').select('*').eq('user_id', user.id),
+      supabase.from('insights').select('*'),
       supabase
         .from('transcripts')
-        .select('*, calls!inner(user_id)')
-        .eq('calls.user_id', user.id),
+        .select('*, calls!inner(id)'),
     ])
 
     if (insightsResult.error) throw insightsResult.error

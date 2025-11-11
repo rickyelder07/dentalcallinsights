@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch calls with date filtering if provided
+    // RLS policies will automatically filter to show team members' calls
     let callsQuery = supabase
       .from('calls')
       .select('*')
-      .eq('user_id', user.id)
       .order('call_time', { ascending: false })
       .limit(10000) // Increase from default 1000 to support larger datasets
 
