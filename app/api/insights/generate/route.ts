@@ -53,12 +53,11 @@ export async function POST(req: NextRequest) {
       )
     }
     
-    // Get call and verify ownership
+    // Get call and verify ownership (RLS will handle team access)
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('id, call_duration_seconds, user_id, filename, transcript:transcripts!inner(id, transcript, edited_transcript, transcription_status)')
+      .select('id, call_duration_seconds, user_id, filename, team_id, transcript:transcripts!inner(id, transcript, edited_transcript, transcription_status)')
       .eq('id', callId)
-      .eq('user_id', user.id)
       .single()
     
     if (callError || !call) {
@@ -79,6 +78,7 @@ export async function POST(req: NextRequest) {
           {
             call_id: callId,
             user_id: user.id,
+            team_id: call.team_id || null, // Include team_id from call
             overall_sentiment: 'neutral',
             key_points: ['No recording available for this call.'],
             action_items: [],
@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
         .upsert({
           call_id: callId,
           user_id: user.id,
+          team_id: call.team_id || null, // Include team_id from call
           status: 'completed',
           cached: false,
           started_at: new Date().toISOString(),
@@ -198,6 +199,7 @@ export async function POST(req: NextRequest) {
     const jobData = {
       call_id: callId,
       user_id: user.id,
+      team_id: call.team_id || null, // Include team_id from call
       status: 'processing',
       started_at: new Date().toISOString(),
       metadata: { progress: 0, stage: 'starting' },

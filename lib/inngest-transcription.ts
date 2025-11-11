@@ -188,6 +188,7 @@ export const transcribeCall = inngest.createFunction(
         .upsert({
           call_id: callId,
           user_id: userId,
+          team_id: callDetails.team_id || null, // Include team_id from call
           raw_transcript: transcriptionResult.text,
           edited_transcript: correctedText,
           transcript: correctedText, // Legacy field

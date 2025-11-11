@@ -30,7 +30,23 @@ export const generateCallInsights = inngest.createFunction(
     console.log(`Starting insights generation for call ${callId}, job ${event.id}, forceRegenerate: ${forceRegenerate}`)
 
     try {
-      // Step 1: Fetch transcript
+      // Step 1: Fetch call details (to get team_id)
+      const callDetails = await step.run('fetch-call', async () => {
+        const { data: call, error } = await supabase
+          .from('calls')
+          .select('team_id')
+          .eq('id', callId)
+          .single()
+
+        if (error || !call) {
+          console.warn(`Could not fetch call details: ${error?.message}`)
+          return { team_id: null }
+        }
+
+        return call
+      })
+
+      // Step 2: Fetch transcript
       const transcript = await step.run('fetch-transcript', async () => {
         await updateInsightsProgress(callId, event.id, 10, 'fetching', 'Fetching transcript...')
 
@@ -55,7 +71,7 @@ export const generateCallInsights = inngest.createFunction(
         return transcriptText
       })
 
-      // Step 2: Check for cached insights (skip if forcing regeneration)
+      // Step 3: Check for cached insights (skip if forcing regeneration)
       let cachedInsights = null
       
       if (!forceRegenerate) {
@@ -99,7 +115,7 @@ export const generateCallInsights = inngest.createFunction(
         await updateInsightsProgress(callId, event.id, 20, 'analyzing', 'Force regenerating...')
       }
 
-      // Step 3: Generate insights with GPT
+      // Step 4: Generate insights with GPT
       const insights = await step.run('generate-insights', async () => {
         await updateInsightsProgress(callId, event.id, 40, 'analyzing', 'Analyzing with AI...')
 
@@ -122,7 +138,7 @@ export const generateCallInsights = inngest.createFunction(
         return result.insights
       })
 
-      // Step 4: Save insights to database
+      // Step 5: Save insights to database
       await step.run('save-insights', async () => {
         await updateInsightsProgress(callId, event.id, 90, 'saving', 'Saving insights...')
 
@@ -133,6 +149,7 @@ export const generateCallInsights = inngest.createFunction(
             {
               call_id: callId,
               user_id: userId,
+              team_id: callDetails.team_id || null, // Include team_id from call
               overall_sentiment: insights.sentiment?.overall || 'neutral',
               key_points: insights.summary?.key_points || [],
               action_items: insights.action_items || [],
@@ -184,10 +201,18 @@ export const generateCallInsights = inngest.createFunction(
       if (errorMessage === 'EMPTY_TRANSCRIPT') {
         console.log(`Creating placeholder insights for empty transcript: ${callId}`)
         const placeholderResult = await step.run('save-placeholder-insights', async () => {
+          // Fetch call details if not already available
+          const { data: call } = await supabase
+            .from('calls')
+            .select('team_id')
+            .eq('id', callId)
+            .single()
+          
           const placeholderInsights = {
             call_id: callId,
             user_id: userId,
-            overall_sentiment: 'neutral',
+            team_id: call?.team_id || null, // Include team_id from call
+              overall_sentiment: 'neutral',
             key_points: ['Transcript is empty or too short for analysis'],
             action_items: [],
             red_flags: [],

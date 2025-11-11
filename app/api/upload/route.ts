@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { SimplifiedCsvParser } from '@/lib/csv-parser-simplified'
 import { parseNewPatientStatus } from '@/lib/call-flow-parser'
+import { getCallTeamId } from '@/lib/teams'
 import type { UploadResult } from '@/types/upload'
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
@@ -35,6 +36,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Get user's team ID (if they belong to a team)
+    const teamId = await getCallTeamId(user.id)
 
     // Parse form data
     const formData = await request.formData()
@@ -168,6 +172,7 @@ export async function POST(request: NextRequest) {
           
           const insertPayload = {
             user_id: user.id,
+            team_id: teamId, // Include team_id if user belongs to a team
             filename: 'No Call Recording',
             audio_path: '', // No audio path
             file_size: null,
@@ -325,6 +330,7 @@ export async function POST(request: NextRequest) {
           
           const insertPayload = {
             user_id: user.id,
+            team_id: teamId, // Include team_id if user belongs to a team
             filename: file.name,
             audio_path: storagePath,
             file_size: file.size,

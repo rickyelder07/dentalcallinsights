@@ -15,6 +15,7 @@ export default function Navigation() {
   const pathname = usePathname()
   const { user, loading } = useAuth()
   const [analyticsDropdownOpen, setAnalyticsDropdownOpen] = useState(false)
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
 
   return (
     <header className="bg-white shadow-sm border-b">
@@ -150,17 +151,68 @@ export default function Navigation() {
               </div>
             ) : user ? (
               <div className="flex items-center space-x-2 ml-4 pl-4 border-l border-gray-200">
-                <Link
-                  href="/profile"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                    pathname === '/profile'
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
+                {/* Profile Dropdown */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setProfileDropdownOpen(true)}
+                  onMouseLeave={() => setProfileDropdownOpen(false)}
                 >
-                  <span className="hidden lg:inline">{user.email}</span>
-                  <span className="lg:hidden">Profile</span>
-                </Link>
+                  <Link
+                    href="/profile"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition flex items-center gap-1 ${
+                      pathname === '/profile' || pathname?.startsWith('/teams')
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="hidden lg:inline">{user.email}</span>
+                    <span className="lg:hidden">Profile</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </Link>
+                  
+                  {/* Dropdown Menu */}
+                  {profileDropdownOpen && (
+                    <div className="absolute top-full right-0 pt-1 w-48 z-50">
+                      <div className="bg-white border border-gray-200 rounded-md shadow-lg">
+                        <Link
+                          href="/profile"
+                          className={`block px-4 py-2 text-sm transition ${
+                            pathname === '/profile'
+                              ? 'bg-primary-50 text-primary-700 font-medium'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Profile
+                          </span>
+                        </Link>
+                        <Link
+                          href="/teams"
+                          className={`block px-4 py-2 text-sm transition ${
+                            pathname?.startsWith('/teams')
+                              ? 'bg-primary-50 text-primary-700 font-medium'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            Teams
+                          </span>
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <LogoutButton />
               </div>
             ) : (
@@ -295,7 +347,27 @@ export default function Navigation() {
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              Profile
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Profile
+              </span>
+            </Link>
+            <Link
+              href="/teams"
+              className={`block px-3 py-2 rounded-md text-sm font-medium ${
+                pathname?.startsWith('/teams')
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Teams
+              </span>
             </Link>
             <div className="pt-2 border-t border-gray-200">
               <LogoutButton className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50" />

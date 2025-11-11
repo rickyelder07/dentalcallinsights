@@ -109,6 +109,8 @@ export async function POST(req: NextRequest) {
         .upsert(
           {
             call_id: callId,
+            user_id: user.id,
+            team_id: call.team_id || null, // Include team_id from call
             transcript: 'No recording available for this call.',
             raw_transcript: 'No recording available for this call.',
             transcription_status: 'completed',
@@ -131,6 +133,7 @@ export async function POST(req: NextRequest) {
           {
             call_id: callId,
             user_id: user.id,
+            team_id: call.team_id || null, // Include team_id from call
             status: 'completed',
             started_at: new Date().toISOString(),
             completed_at: new Date().toISOString(),
@@ -170,6 +173,8 @@ export async function POST(req: NextRequest) {
         .upsert(
           {
             call_id: callId,
+            user_id: user.id,
+            team_id: call.team_id || null, // Include team_id from call
             transcript: 'Call too short to transcribe.',
             raw_transcript: 'Call too short to transcribe.',
             transcription_status: 'completed',
@@ -247,6 +252,7 @@ export async function POST(req: NextRequest) {
     const jobData = {
       call_id: callId,
       user_id: user.id,
+      team_id: call.team_id || null, // Include team_id from call
       status: 'processing',
       started_at: new Date().toISOString(),
       metadata: { language, prompt },
@@ -288,6 +294,7 @@ export async function POST(req: NextRequest) {
       .upsert({
         call_id: callId,
         user_id: user.id,
+        team_id: call.team_id || null, // Include team_id from call
         transcription_status: 'processing',
         processing_started_at: new Date().toISOString(),
         transcript: 'Processing...', // Temporary placeholder (non-empty)

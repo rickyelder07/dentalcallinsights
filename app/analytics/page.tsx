@@ -8,8 +8,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
-import { formatCallTime } from '@/lib/datetime'
-import VectorSearch from '../components/VectorSearch'
 import type {
   AnalyticsOverview,
   AnalyticsTrends,
@@ -26,57 +24,14 @@ export default function AnalyticsPage() {
   const [trends, setTrends] = useState<AnalyticsTrends | null>(null)
   const [sentiment, setSentiment] = useState<SentimentAnalytics | null>(null)
   const [performance, setPerformance] = useState<PerformanceMetrics | null>(null)
-  
-  // Filtered analytics state
-  const [filteredOverview, setFilteredOverview] = useState<AnalyticsOverview | null>(null)
-  const [filteredSentiment, setFilteredSentiment] = useState<SentimentAnalytics | null>(null)
-  const [filteredPerformance, setFilteredPerformance] = useState<PerformanceMetrics | null>(null)
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
-  
-  // Filter and call viewing state
-  const [showFilters, setShowFilters] = useState(false)
-  const [showCalls, setShowCalls] = useState(false)
-  const [filteredCalls, setFilteredCalls] = useState<any[]>([])
-  const [loadingCalls, setLoadingCalls] = useState(false)
-  
-  // Filter options
-  const [dateRangeStart, setDateRangeStart] = useState<string>('')
-  const [dateRangeEnd, setDateRangeEnd] = useState<string>('')
-  const [sentimentFilter, setSentimentFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [directionFilter, setDirectionFilter] = useState<string>('all')
-  const [sourceNumberFilter, setSourceNumberFilter] = useState<string>('')
-  const [sourceExtensionFilter, setSourceExtensionFilter] = useState<string>('all')
-  const [newPatientFilter, setNewPatientFilter] = useState<string>('all')
-  const [durationMin, setDurationMin] = useState<string>('')
-  const [durationMax, setDurationMax] = useState<string>('')
 
   useEffect(() => {
     fetchAnalytics()
   }, [])
-
-  useEffect(() => {
-    // Always fetch filtered calls when filters change, not just when showCalls is true
-    // This ensures analytics data is updated based on filters
-    if (hasActiveFilters()) {
-      fetchFilteredCalls()
-    }
-  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, sourceExtensionFilter, newPatientFilter, durationMin, durationMax])
-
-  useEffect(() => {
-    if (hasActiveFilters()) {
-      computeFilteredAnalytics()
-    } else {
-      // Clear filtered analytics when no filters are active
-      setFilteredOverview(null)
-      setFilteredSentiment(null)
-      setFilteredPerformance(null)
-    }
-  }, [dateRangeStart, dateRangeEnd, sentimentFilter, statusFilter, directionFilter, sourceNumberFilter, sourceExtensionFilter, newPatientFilter, durationMin, durationMax, overview, sentiment, performance])
 
   const fetchAnalytics = async (forceRefresh = false) => {
     try {
@@ -138,338 +93,6 @@ export default function AnalyticsPage() {
     fetchAnalytics(true)
   }
 
-  const fetchFilteredCalls = async () => {
-    try {
-      setLoadingCalls(true)
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      // Build query
-      let query = supabase
-        .from('calls')
-        .select(`
-          *,
-          transcript:transcripts(*),
-          insights:insights(*)
-        `)
-        .eq('user_id', session.user.id)
-        .order('call_time', { ascending: false })
-        .limit(10000) // Increase from default 1000 to support larger datasets
-
-      // Apply filters
-      // Fix timezone issue: ensure dates are formatted correctly for database comparison
-      if (dateRangeStart) {
-        // Format as YYYY-MM-DD HH:MM:SS in local timezone for proper comparison
-        const [year, month, day] = dateRangeStart.split('-').map(Number)
-        const startDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 00:00:00`
-        query = query.gte('call_time', startDateStr)
-      }
-      if (dateRangeEnd) {
-        // Format as YYYY-MM-DD HH:MM:SS in local timezone for proper comparison
-        const [year, month, day] = dateRangeEnd.split('-').map(Number)
-        const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 23:59:59`
-        query = query.lte('call_time', endDateStr)
-      }
-      if (directionFilter !== 'all') {
-        query = query.eq('call_direction', directionFilter)
-      }
-      if (sourceNumberFilter) {
-        query = query.ilike('source_number', `%${sourceNumberFilter}%`)
-      }
-      if (sourceExtensionFilter !== 'all') {
-        query = query.eq('source_extension', sourceExtensionFilter)
-      }
-      if (durationMin) {
-        query = query.gte('call_duration_seconds', parseInt(durationMin))
-      }
-      if (durationMax) {
-        query = query.lte('call_duration_seconds', parseInt(durationMax))
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      let filtered = data || []
-
-      // Apply client-side filters
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter((call: any) => {
-          if (statusFilter === 'transcribed') {
-            return call.transcript?.transcription_status === 'completed'
-          } else if (statusFilter === 'pending') {
-            return !call.transcript || call.transcript.transcription_status === 'pending'
-          }
-          return true
-        })
-      }
-
-      if (sentimentFilter !== 'all') {
-        filtered = filtered.filter((call: any) => {
-          const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
-          return insights?.overall_sentiment === sentimentFilter
-        })
-      }
-
-      if (newPatientFilter !== 'all') {
-        const filterValue = newPatientFilter === 'new'
-        filtered = filtered.filter((call: any) => {
-          return call.is_new_patient === filterValue
-        })
-      }
-
-      setFilteredCalls(filtered)
-    } catch (error) {
-      console.error('Error fetching filtered calls:', error)
-    } finally {
-      setLoadingCalls(false)
-    }
-  }
-
-  const clearFilters = () => {
-    setDateRangeStart('')
-    setDateRangeEnd('')
-    setSentimentFilter('all')
-    setStatusFilter('all')
-    setDirectionFilter('all')
-    setSourceNumberFilter('')
-    setSourceExtensionFilter('all')
-    setNewPatientFilter('all')
-    setDurationMin('')
-    setDurationMax('')
-  }
-
-  const hasActiveFilters = () => {
-    return dateRangeStart || dateRangeEnd || sentimentFilter !== 'all' || 
-           statusFilter !== 'all' || directionFilter !== 'all' || 
-           sourceNumberFilter || sourceExtensionFilter !== 'all' || newPatientFilter !== 'all' || durationMin || durationMax
-  }
-
-  const computeFilteredAnalytics = () => {
-    if (!overview || !sentiment || !performance) return
-
-    // Get the filtered calls data
-    const callsData = filteredCalls.length > 0 ? filteredCalls : []
-
-    // Compute filtered analytics
-    const filteredOverviewData = computeFilteredOverviewAnalytics(callsData)
-    const filteredSentimentData = computeFilteredSentimentAnalytics(callsData)
-    const filteredPerformanceData = computeFilteredPerformanceAnalytics(callsData)
-
-    setFilteredOverview(filteredOverviewData)
-    setFilteredSentiment(filteredSentimentData)
-    setFilteredPerformance(filteredPerformanceData)
-  }
-
-  const computeFilteredOverviewAnalytics = (calls: any[]): AnalyticsOverview => {
-    const transcriptIds = new Set(
-      calls
-        .filter((c) => c.transcript?.transcription_status === 'completed')
-        .map((c) => c.id)
-    )
-    
-    const insightsCallIds = new Set(
-      calls
-        .filter((c) => {
-          // Handle insights consistently with library page
-          const insights = Array.isArray(c.insights) && c.insights.length > 0 ? c.insights[0] : null
-          return insights !== null
-        })
-        .map((c) => c.id)
-    )
-    
-    // Calculate sentiment distribution
-    const sentimentCounts = {
-      positive: 0,
-      negative: 0,
-      neutral: 0,
-      mixed: 0,
-    }
-    
-    calls.forEach((call) => {
-      // Handle insights consistently with library page
-      const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
-      const sentiment = insights?.overall_sentiment
-      if (sentiment && sentiment in sentimentCounts) {
-        sentimentCounts[sentiment as keyof typeof sentimentCounts]++
-      }
-    })
-    
-    // Calculate duration statistics
-    const durations = calls
-      .map((c) => c.call_duration_seconds)
-      .filter((d) => d != null && d > 0)
-    
-    const totalDuration = durations.reduce((sum, d) => sum + d, 0)
-    const avgDuration = durations.length > 0 ? totalDuration / durations.length : 0
-    
-    // Calculate action items and red flags
-    const callsWithActionItems = calls.filter(
-      (c) => {
-        const insights = Array.isArray(c.insights) && c.insights.length > 0 ? c.insights[0] : null
-        return insights?.action_items && Array.isArray(insights.action_items) && insights.action_items.length > 0
-      }
-    ).length
-    
-    const callsWithRedFlags = calls.filter(
-      (c) => {
-        const insights = Array.isArray(c.insights) && c.insights.length > 0 ? c.insights[0] : null
-        return insights?.red_flags && Array.isArray(insights.red_flags) && insights.red_flags.length > 0
-      }
-    ).length
-    
-    // Get date range
-    const callTimes = calls
-      .map((c) => c.call_time)
-      .filter((t) => t != null)
-      .sort()
-    
-    return {
-      totalCalls: calls.length,
-      transcribedCalls: transcriptIds.size,
-      callsWithInsights: insightsCallIds.size,
-      callsWithEmbeddings: 0, // Would need to fetch embeddings separately
-      avgCallDuration: Math.round(avgDuration),
-      totalCallDuration: totalDuration,
-      positiveCalls: sentimentCounts.positive,
-      negativeCalls: sentimentCounts.negative,
-      neutralCalls: sentimentCounts.neutral,
-      mixedCalls: sentimentCounts.mixed,
-      callsWithActionItems,
-      callsWithRedFlags,
-      earliestCall: callTimes[0],
-      latestCall: callTimes[callTimes.length - 1],
-      computedAt: new Date().toISOString(),
-    }
-  }
-
-  const computeFilteredSentimentAnalytics = (calls: any[]): SentimentAnalytics => {
-    const sentimentCounts = {
-      positive: 0,
-      negative: 0,
-      neutral: 0,
-      mixed: 0,
-    }
-    
-    const satisfactionCounts = {
-      happy: 0,
-      satisfied: 0,
-      neutral: 0,
-      frustrated: 0,
-      angry: 0,
-      tooShort: 0,
-    }
-    
-    calls.forEach((call) => {
-      const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
-      if (!insights) return
-
-      // Count sentiments
-      const sentiment = insights.overall_sentiment
-      if (sentiment && sentiment in sentimentCounts) {
-        sentimentCounts[sentiment as keyof typeof sentimentCounts]++
-      }
-
-      // Count satisfaction levels
-      if (insights.patient_satisfaction) {
-        const satisfaction = insights.patient_satisfaction.toLowerCase()
-        if (satisfaction in satisfactionCounts) {
-          satisfactionCounts[satisfaction as keyof typeof satisfactionCounts]++
-        }
-      }
-    })
-
-    const _totalCalls = calls.length
-    const totalWithSentiment = Object.values(sentimentCounts).reduce((sum, count) => sum + count, 0)
-    
-    const distribution = Object.entries(sentimentCounts).map(([sentiment, count]) => ({
-      sentiment: sentiment as any,
-      count,
-      percentage: totalWithSentiment > 0 ? Math.round((count / totalWithSentiment) * 100) : 0,
-    }))
-
-    const totalSatisfaction = Object.values(satisfactionCounts).reduce((sum, count) => sum + count, 0)
-    const avgSatisfactionScore = totalSatisfaction > 0 ? 
-      Math.round((satisfactionCounts.happy * 100 + satisfactionCounts.satisfied * 80 + satisfactionCounts.neutral * 50 + satisfactionCounts.frustrated * 20 + satisfactionCounts.angry * 0) / totalSatisfaction) : 0
-
-    return {
-      distribution,
-      patientSatisfaction: satisfactionCounts,
-      sentimentTrend: {
-        period: 'filtered',
-        positivePercentage: totalWithSentiment > 0 ? Math.round((sentimentCounts.positive / totalWithSentiment) * 100) : 0,
-        negativePercentage: totalWithSentiment > 0 ? Math.round((sentimentCounts.negative / totalWithSentiment) * 100) : 0,
-        change: 0, // Would need historical data to calculate
-      },
-      avgSatisfactionScore,
-    }
-  }
-
-  const computeFilteredPerformanceAnalytics = (calls: any[]): PerformanceMetrics => {
-    const outcomeCounts: Record<string, number> = {}
-    let professionalCalls = 0
-    let needsImprovementCalls = 0
-    let appointmentsScheduled = 0
-    let appointmentsCancelled = 0
-
-    calls.forEach((call) => {
-      const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
-      if (!insights) return
-
-      // Count outcomes
-      if (insights.call_outcome) {
-        outcomeCounts[insights.call_outcome] = (outcomeCounts[insights.call_outcome] || 0) + 1
-      }
-
-      // Count professional calls
-      if (insights.staff_performance === 'professional') {
-        professionalCalls++
-      } else if (insights.staff_performance === 'needs_improvement') {
-        needsImprovementCalls++
-      }
-
-      // Count appointments
-      if (insights.appointment_scheduled) appointmentsScheduled++
-      if (insights.appointment_cancelled) appointmentsCancelled++
-    })
-
-    const totalCalls = calls.length
-    const outcomes = Object.entries(outcomeCounts).map(([outcome, count]) => ({
-      outcome: outcome as any,
-      count,
-      percentage: totalCalls > 0 ? Math.round((count / totalCalls) * 100) : 0,
-    }))
-
-    const durations = calls
-      .map((c) => c.call_duration_seconds)
-      .filter((d) => d != null && d > 0)
-    const avgDuration = durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) / durations.length : 0
-
-    const resolutionRate = totalCalls > 0 ? Math.round((professionalCalls / totalCalls) * 100) : 0
-
-    return {
-      outcomes,
-      staffPerformance: {
-        totalCalls,
-        professionalCalls,
-        needsImprovementCalls,
-        avgCallDuration: Math.round(avgDuration),
-        avgPatientSatisfaction: 0, // Would need to calculate from satisfaction data
-        resolutionRate,
-      },
-      revenueImpact: {
-        appointmentsScheduled,
-        appointmentsCancelled,
-        missedOpportunities: 0, // Would need business logic
-        estimatedRevenue: appointmentsScheduled * 150, // Example: $150 per appointment
-      },
-      callVolumePatterns: {
-        peakHours: [], // Would need time analysis
-        peakDays: [], // Would need day analysis
-      },
-    }
-  }
-
   if (isLoading && !overview) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -513,41 +136,6 @@ export default function AnalyticsPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => {
-              setShowFilters(!showFilters)
-              if (!showFilters) setShowCalls(true)
-            }}
-            className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-              hasActiveFilters() 
-                ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                : 'bg-gray-600 text-white hover:bg-gray-700'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            {showFilters ? 'Hide Filters' : 'Filter Analytics'}
-            {hasActiveFilters() && <span className="bg-white text-orange-600 rounded-full px-2 py-0.5 text-xs font-bold">Active</span>}
-          </button>
-          <button
-            onClick={() => setShowCalls(!showCalls)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            {showCalls ? 'Hide' : 'View'} Calls ({filteredCalls.length})
-          </button>
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {showSearch ? 'Hide' : 'Search'}
-          </button>
-          <button
             onClick={handleRefresh}
             disabled={refreshing}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
@@ -579,313 +167,39 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Filter Controls */}
-      {showFilters && (
-        <div className="mb-8 bg-white border-2 border-orange-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Filter Analytics Data</h2>
-            <div className="flex gap-2">
-              {hasActiveFilters() && (
-                <button
-                  onClick={clearFilters}
-                  className="text-sm px-3 py-1 text-orange-600 hover:text-orange-800 border border-orange-300 rounded hover:bg-orange-50"
-                >
-                  Clear Filters
-                </button>
-              )}
-              <button
-                onClick={() => setShowFilters(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Date Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-              <input
-                type="date"
-                value={dateRangeStart}
-                onChange={(e) => setDateRangeStart(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-              <input
-                type="date"
-                value={dateRangeEnd}
-                onChange={(e) => setDateRangeEnd(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-            
-            {/* Sentiment Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Sentiment</label>
-              <select
-                value={sentimentFilter}
-                onChange={(e) => setSentimentFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="all">All Sentiment</option>
-                <option value="positive">Positive</option>
-                <option value="negative">Negative</option>
-                <option value="neutral">Neutral</option>
-                <option value="mixed">Mixed</option>
-              </select>
-            </div>
-            
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="transcribed">Transcribed</option>
-                <option value="pending">Pending</option>
-              </select>
-            </div>
-            
-            {/* Direction Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Direction</label>
-              <select
-                value={directionFilter}
-                onChange={(e) => setDirectionFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="all">All Directions</option>
-                <option value="Inbound">Inbound</option>
-                <option value="Outbound">Outbound</option>
-              </select>
-            </div>
-            
-            {/* Source Number Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Source Number</label>
-              <input
-                type="text"
-                value={sourceNumberFilter}
-                onChange={(e) => setSourceNumberFilter(e.target.value)}
-                placeholder="Search by source number..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-            
-            {/* Source Extension Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Source Extension</label>
-              <select
-                value={sourceExtensionFilter}
-                onChange={(e) => setSourceExtensionFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="all">All Extensions</option>
-                {Array.from(new Set(filteredCalls.map(c => c.source_extension).filter(Boolean))).sort().map(ext => (
-                  <option key={ext} value={ext}>{ext}</option>
-                ))}
-              </select>
-            </div>
-            
-            {/* New Patient Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">New Patient</label>
-              <select
-                value={newPatientFilter}
-                onChange={(e) => setNewPatientFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="all">All Calls</option>
-                <option value="new">New Patients</option>
-                <option value="existing">Existing Patients</option>
-              </select>
-            </div>
-            
-            {/* Duration Min Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Min Duration (seconds)</label>
-              <input
-                type="number"
-                value={durationMin}
-                onChange={(e) => setDurationMin(e.target.value)}
-                placeholder="e.g. 30"
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-            
-            {/* Duration Max Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Max Duration (seconds)</label>
-              <input
-                type="number"
-                value={durationMax}
-                onChange={(e) => setDurationMax(e.target.value)}
-                placeholder="e.g. 300"
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {hasActiveFilters() && (
-            <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <p className="text-sm text-orange-800">
-                <span className="font-semibold">Note:</span> Filters are currently viewing {filteredCalls.length} call(s). 
-                Analytics shown below will update to reflect only the filtered data.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Filtered Calls View */}
-      {showCalls && (
-        <div className="mb-8 bg-white border-2 border-green-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Calls in Analytics ({filteredCalls.length})
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {hasActiveFilters() ? 'Showing filtered calls' : 'Showing all calls'}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowCalls(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          {loadingCalls ? (
-            <div className="text-center py-8">
-              <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full mx-auto"></div>
-              <p className="text-gray-600 mt-2">Loading calls...</p>
-            </div>
-          ) : filteredCalls.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-600">No calls match the current filters</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {filteredCalls.map((call: any) => (
-                <div
-                  key={call.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/calls/${call.id}`)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 text-sm">{call.filename}</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatCallTime(call.call_time)}
-                      </p>
-                      <div className="flex gap-2 mt-2">
-                        {call.call_direction && (
-                          <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded">
-                            {call.call_direction}
-                          </span>
-                        )}
-                        {call.transcript?.transcription_status === 'completed' && (
-                          <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-                            Transcribed
-                          </span>
-                        )}
-                        {(() => {
-                          const insights = Array.isArray(call.insights) && call.insights.length > 0 ? call.insights[0] : null
-                          return insights?.overall_sentiment && (
-                            <span className={`px-2 py-0.5 text-xs rounded ${
-                              insights.overall_sentiment === 'positive' ? 'bg-green-100 text-green-700' :
-                              insights.overall_sentiment === 'negative' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {insights.overall_sentiment}
-                            </span>
-                          )
-                        })()}
-                      </div>
-                    </div>
-                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Database Query Search Section */}
-      {showSearch && (
-        <div className="mb-8 bg-white border-2 border-purple-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Database Query Search</h2>
-            <button
-              onClick={() => setShowSearch(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <VectorSearch />
-        </div>
-      )}
-
       {/* Overview Stats */}
-      {(overview || filteredOverview) && (
+      {overview && (
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Overview
-            {hasActiveFilters() && (
-              <span className="ml-2 text-sm font-normal text-orange-600">
-                (Filtered: {filteredCalls.length} calls)
-              </span>
-            )}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {(() => {
-              const currentOverview = hasActiveFilters() ? filteredOverview : overview
-              if (!currentOverview) return null
+              if (!overview) return null
               
               return (
                 <>
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="text-3xl font-bold text-gray-900">{currentOverview.totalCalls}</div>
+                    <div className="text-3xl font-bold text-gray-900">{overview.totalCalls}</div>
                     <div className="text-sm text-gray-600 mt-1">Total Calls</div>
                   </div>
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="text-3xl font-bold text-green-600">{currentOverview.transcribedCalls}</div>
+                    <div className="text-3xl font-bold text-green-600">{overview.transcribedCalls}</div>
                     <div className="text-sm text-gray-600 mt-1">Transcribed</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {currentOverview.totalCalls > 0 ? Math.round((currentOverview.transcribedCalls / currentOverview.totalCalls) * 100) : 0}% of total
+                      {overview.totalCalls > 0 ? Math.round((overview.transcribedCalls / overview.totalCalls) * 100) : 0}% of total
                     </div>
                   </div>
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="text-3xl font-bold text-purple-600">{currentOverview.callsWithInsights}</div>
+                    <div className="text-3xl font-bold text-purple-600">{overview.callsWithInsights}</div>
                     <div className="text-sm text-gray-600 mt-1">AI Insights</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {currentOverview.totalCalls > 0 ? Math.round((currentOverview.callsWithInsights / currentOverview.totalCalls) * 100) : 0}% of total
+                      {overview.totalCalls > 0 ? Math.round((overview.callsWithInsights / overview.totalCalls) * 100) : 0}% of total
                     </div>
                   </div>
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <div className="text-3xl font-bold text-blue-600">
-                      {Math.floor(currentOverview.avgCallDuration / 60)}:{(currentOverview.avgCallDuration % 60).toString().padStart(2, '0')}
+                      {Math.floor(overview.avgCallDuration / 60)}:{(overview.avgCallDuration % 60).toString().padStart(2, '0')}
                     </div>
                     <div className="text-sm text-gray-600 mt-1">Avg Call Duration</div>
                   </div>
@@ -897,20 +211,14 @@ export default function AnalyticsPage() {
       )}
 
       {/* Sentiment Analysis */}
-      {(sentiment || filteredSentiment) && (
+      {sentiment && (
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Sentiment Analysis
-            {hasActiveFilters() && (
-              <span className="ml-2 text-sm font-normal text-orange-600">
-                (Filtered)
-              </span>
-            )}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(() => {
-              const currentSentiment = hasActiveFilters() ? filteredSentiment : sentiment
-              if (!currentSentiment) return null
+              if (!sentiment) return null
               
               return (
                 <>
@@ -918,7 +226,7 @@ export default function AnalyticsPage() {
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Overall Sentiment</h3>
                     <div className="space-y-3">
-                      {currentSentiment.distribution.map((item) => (
+                      {sentiment.distribution.map((item) => (
                         <div key={item.sentiment} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="capitalize">{item.sentiment}</span>
@@ -947,7 +255,7 @@ export default function AnalyticsPage() {
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Patient Satisfaction</h3>
                     <div className="space-y-3">
-                      {Object.entries(currentSentiment.patientSatisfaction).map(([key, count]) => {
+                      {Object.entries(sentiment.patientSatisfaction).map(([key, count]) => {
                         if (count === 0) return null
                         return (
                           <div key={key} className="flex items-center justify-between">
@@ -961,7 +269,7 @@ export default function AnalyticsPage() {
                       <div className="flex items-center justify-between">
                         <span className="font-medium">Satisfaction Score</span>
                         <span className="text-2xl font-bold text-blue-600">
-                          {currentSentiment.avgSatisfactionScore}/100
+                          {sentiment.avgSatisfactionScore}/100
                         </span>
                       </div>
                     </div>
@@ -974,21 +282,14 @@ export default function AnalyticsPage() {
       )}
 
       {/* Performance Metrics */}
-      {(performance || filteredPerformance) && (
+      {performance && (
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Performance Metrics
-            {hasActiveFilters() && (
-              <span className="ml-2 text-sm font-normal text-orange-600">
-                (Filtered)
-              </span>
-            )}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(() => {
-              const currentPerformance = hasActiveFilters() ? filteredPerformance : performance
-              const currentOverview = hasActiveFilters() ? filteredOverview : overview
-              if (!currentPerformance) return null
+              if (!performance || !overview) return null
               
               return (
                 <>
@@ -996,7 +297,7 @@ export default function AnalyticsPage() {
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Call Outcomes</h3>
                     <div className="space-y-2">
-                      {currentPerformance.outcomes.map((outcome) => (
+                      {performance.outcomes.map((outcome) => (
                         <div key={outcome.outcome} className="flex items-center justify-between text-sm">
                           <span className="capitalize">{outcome.outcome.replace(/_/g, ' ')}</span>
                           <div className="flex items-center gap-2">
@@ -1013,15 +314,15 @@ export default function AnalyticsPage() {
                     <h3 className="font-semibold text-gray-900 mb-4">Staff Performance</h3>
                     <div className="space-y-3">
                       <div>
-                        <div className="text-2xl font-bold text-green-600">{currentPerformance.staffPerformance.professionalCalls}</div>
+                        <div className="text-2xl font-bold text-green-600">{performance.staffPerformance.professionalCalls}</div>
                         <div className="text-sm text-gray-600">Professional Calls</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-orange-600">{currentPerformance.staffPerformance.needsImprovementCalls}</div>
+                        <div className="text-2xl font-bold text-orange-600">{performance.staffPerformance.needsImprovementCalls}</div>
                         <div className="text-sm text-gray-600">Needs Improvement</div>
                       </div>
                       <div className="pt-3 border-t border-gray-200">
-                        <div className="text-xl font-bold text-blue-600">{currentPerformance.staffPerformance.resolutionRate}%</div>
+                        <div className="text-xl font-bold text-blue-600">{performance.staffPerformance.resolutionRate}%</div>
                         <div className="text-sm text-gray-600">Resolution Rate</div>
                       </div>
                     </div>
@@ -1031,22 +332,18 @@ export default function AnalyticsPage() {
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
                     <div className="space-y-3">
-                      {currentOverview && (
-                        <>
-                          <div>
-                            <div className="text-2xl font-bold text-red-600">{currentOverview.callsWithRedFlags}</div>
-                            <div className="text-sm text-gray-600">Calls with Red Flags</div>
-                          </div>
-                          <div>
-                            <div className="text-2xl font-bold text-blue-600">{currentOverview.callsWithActionItems}</div>
-                            <div className="text-sm text-gray-600">Calls with Action Items</div>
-                          </div>
-                          <div>
-                            <div className="text-2xl font-bold text-green-600">{currentOverview.positiveCalls}</div>
-                            <div className="text-sm text-gray-600">Positive Sentiment Calls</div>
-                          </div>
-                        </>
-                      )}
+                      <div>
+                        <div className="text-2xl font-bold text-red-600">{overview.callsWithRedFlags}</div>
+                        <div className="text-sm text-gray-600">Calls with Red Flags</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{overview.callsWithActionItems}</div>
+                        <div className="text-sm text-gray-600">Calls with Action Items</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{overview.positiveCalls}</div>
+                        <div className="text-sm text-gray-600">Positive Sentiment Calls</div>
+                      </div>
                     </div>
                   </div>
                 </>
