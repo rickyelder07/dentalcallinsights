@@ -20,7 +20,9 @@ import { createTranscriptionError, isTranscriptionError } from './openai'
 // ============================================
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY
-const DEEPGRAM_MODEL = process.env.DEEPGRAM_MODEL || 'nova-2' // Options: nova-2, whisper-large, base
+// Deepgram model options: 'nova-2', 'base', 'enhanced', 'whisper-large'
+// Note: Some models may require specific tiers or may not support all languages
+const DEEPGRAM_MODEL = process.env.DEEPGRAM_MODEL || 'nova-2'
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB (Deepgram's limit, much higher than Whisper)
 
 /**
@@ -46,7 +48,7 @@ export const DEEPGRAM_SUPPORTED_FORMATS = [
 // ============================================
 
 export interface DeepgramTranscribeOptions {
-  language?: string // ISO-639-1 language code (e.g., 'en', 'es', 'fr')
+  language?: string // ISO-639-1 language code (e.g., 'en', 'es', 'fr') - will be converted to BCP-47
   prompt?: string // Optional text to guide the model (Deepgram uses 'keywords' parameter)
   model?: string // Deepgram model: nova-2 (default), whisper-large, base
   punctuate?: boolean // Add punctuation (default: true)
@@ -54,6 +56,51 @@ export interface DeepgramTranscribeOptions {
   diarize?: boolean // Speaker diarization (default: false)
   smart_format?: boolean // Smart formatting (default: true)
   utterances?: boolean // Split into utterances (default: false)
+}
+
+/**
+ * Convert ISO-639-1 language codes to Deepgram's BCP-47 format
+ * Deepgram supports: en-US, es-ES, fr-FR, de-DE, it-IT, pt-BR, ja-JP, ko-KR, zh-CN, etc.
+ */
+function convertLanguageCode(iso6391Code?: string): string | undefined {
+  if (!iso6391Code) return undefined
+
+  const code = iso6391Code.toLowerCase().trim()
+  
+  // Map common ISO-639-1 codes to Deepgram's BCP-47 format
+  const languageMap: Record<string, string> = {
+    'en': 'en-US',
+    'es': 'es-ES',
+    'fr': 'fr-FR',
+    'de': 'de-DE',
+    'it': 'it-IT',
+    'pt': 'pt-BR',
+    'ja': 'ja-JP',
+    'ko': 'ko-KR',
+    'zh': 'zh-CN',
+    'nl': 'nl-NL',
+    'pl': 'pl-PL',
+    'ru': 'ru-RU',
+    'tr': 'tr-TR',
+    'sv': 'sv-SE',
+    'da': 'da-DK',
+    'no': 'no-NO',
+    'fi': 'fi-FI',
+    'cs': 'cs-CZ',
+    'uk': 'uk-UA',
+    'ar': 'ar-SA',
+    'hi': 'hi-IN',
+    'th': 'th-TH',
+    'vi': 'vi-VN',
+  }
+
+  // If already in BCP-47 format, return as-is
+  if (code.includes('-')) {
+    return code
+  }
+
+  // Convert ISO-639-1 to BCP-47
+  return languageMap[code] || undefined
 }
 
 // ============================================
@@ -154,12 +201,18 @@ export async function transcribeAudio(
     // Prepare Deepgram options
     const deepgramOptions: any = {
       model: options.model || DEEPGRAM_MODEL,
-      language: options.language,
       punctuate: options.punctuate !== false, // Default true
       paragraphs: options.paragraphs !== false, // Default true
       diarize: options.diarize || false,
       smart_format: options.smart_format !== false, // Default true
       utterances: options.utterances || false,
+    }
+
+    // Convert and add language code if provided (only if conversion succeeds)
+    // Deepgram will auto-detect if language is not provided
+    const deepgramLanguage = convertLanguageCode(options.language)
+    if (deepgramLanguage) {
+      deepgramOptions.language = deepgramLanguage
     }
 
     // Add keywords if prompt is provided (Deepgram's equivalent to Whisper's prompt)
@@ -178,16 +231,25 @@ export async function transcribeAudio(
     const arrayBuffer = await fileBlob.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Call Deepgram API
-    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
+    // Call Deepgram API with retry logic for model/language errors
+    let result: any
+    let error: any
+    
+    const apiCall = await deepgram.listen.prerecorded.transcribeFile(
       buffer,
       deepgramOptions
     )
+    
+    result = apiCall.result
+    error = apiCall.error
 
+    // Handle model/language/tier combination errors with automatic retry
     if (error) {
+      const errorMessage = error.message || JSON.stringify(error)
+      
       // Handle rate limit errors
-      if (error.message?.toLowerCase().includes('rate limit') || 
-          error.message?.toLowerCase().includes('429')) {
+      if (errorMessage.toLowerCase().includes('rate limit') || 
+          errorMessage.toLowerCase().includes('429')) {
         throw createTranscriptionError(
           TranscriptionErrorCode.RATE_LIMIT,
           'Deepgram API rate limit exceeded. Please try again later.',
@@ -195,11 +257,51 @@ export async function transcribeAudio(
         )
       }
 
-      throw createTranscriptionError(
-        TranscriptionErrorCode.API_ERROR,
-        error.message || 'Deepgram API error',
-        true // Most Deepgram errors are retryable
-      )
+      // Handle model/language/tier combination errors - retry without language
+      if ((errorMessage.toLowerCase().includes('no such model') || 
+          errorMessage.toLowerCase().includes('model/language/tier')) &&
+          deepgramOptions.language) {
+        console.warn(`[Deepgram] Model/language combination error: ${errorMessage}`)
+        console.warn(`[Deepgram] Attempted model: ${deepgramOptions.model}, language: ${deepgramOptions.language}`)
+        console.log(`[Deepgram] Retrying without language parameter (auto-detect)...`)
+        
+        // Retry without language parameter
+        const retryOptions = { ...deepgramOptions }
+        delete retryOptions.language
+        
+        const retryCall = await deepgram.listen.prerecorded.transcribeFile(
+          buffer,
+          retryOptions
+        )
+        
+        if (retryCall.error) {
+          throw createTranscriptionError(
+            TranscriptionErrorCode.API_ERROR,
+            `Deepgram API error: ${retryCall.error.message || errorMessage}`,
+            false
+          )
+        }
+        
+        // Use retry result
+        result = retryCall.result
+        error = null
+        console.log(`[Deepgram] Retry successful without language parameter`)
+      } else if (errorMessage.toLowerCase().includes('no such model') || 
+                 errorMessage.toLowerCase().includes('model/language/tier')) {
+        // Error but no language to remove - throw error
+        throw createTranscriptionError(
+          TranscriptionErrorCode.API_ERROR,
+          `Deepgram model/language combination not supported. Model: ${deepgramOptions.model}, Language: ${deepgramOptions.language || 'auto-detect'}. Try using a different model or removing the language parameter.`,
+          false
+        )
+      } else {
+        // Other errors
+        throw createTranscriptionError(
+          TranscriptionErrorCode.API_ERROR,
+          `Deepgram API error: ${errorMessage}`,
+          true
+        )
+      }
     }
 
     // Transform Deepgram response to WhisperResponse format
@@ -349,12 +451,18 @@ export async function transcribeAudioFromUrl(
     // Prepare Deepgram options
     const deepgramOptions: any = {
       model: options.model || DEEPGRAM_MODEL,
-      language: options.language,
       punctuate: options.punctuate !== false,
       paragraphs: options.paragraphs !== false,
       diarize: options.diarize || false,
       smart_format: options.smart_format !== false,
       utterances: options.utterances || false,
+    }
+
+    // Convert and add language code if provided (only if conversion succeeds)
+    // Deepgram will auto-detect if language is not provided
+    const deepgramLanguage = convertLanguageCode(options.language)
+    if (deepgramLanguage) {
+      deepgramOptions.language = deepgramLanguage
     }
 
     // Add keywords if prompt is provided
@@ -379,15 +487,30 @@ export async function transcribeAudioFromUrl(
       setTimeout(() => reject(new Error('Transcription timeout')), TRANSCRIPTION_TIMEOUT)
     })
     
-    const { result, error } = await Promise.race([
-      transcriptionPromise,
-      timeoutPromise,
-    ]) as any
+    let apiResult: any
+    try {
+      apiResult = await Promise.race([
+        transcriptionPromise,
+        timeoutPromise,
+      ]) as any
+    } catch (timeoutError) {
+      throw createTranscriptionError(
+        TranscriptionErrorCode.NETWORK_ERROR,
+        'Transcription timeout',
+        true
+      )
+    }
 
+    let result = apiResult?.result
+    let error = apiResult?.error
+
+    // Handle model/language/tier combination errors with automatic retry
     if (error) {
+      const errorMessage = error.message || JSON.stringify(error)
+      
       // Handle rate limit errors
-      if (error.message?.toLowerCase().includes('rate limit') || 
-          error.message?.toLowerCase().includes('429')) {
+      if (errorMessage.toLowerCase().includes('rate limit') || 
+          errorMessage.toLowerCase().includes('429')) {
         throw createTranscriptionError(
           TranscriptionErrorCode.RATE_LIMIT,
           'Deepgram API rate limit exceeded. Please try again later.',
@@ -395,11 +518,49 @@ export async function transcribeAudioFromUrl(
         )
       }
 
-      throw createTranscriptionError(
-        TranscriptionErrorCode.API_ERROR,
-        error.message || 'Deepgram API error',
-        true
-      )
+      // Handle model/language/tier combination errors - retry without language
+      if ((errorMessage.toLowerCase().includes('no such model') || 
+          errorMessage.toLowerCase().includes('model/language/tier')) &&
+          deepgramOptions.language) {
+        console.warn(`[Deepgram] Model/language combination error: ${errorMessage}`)
+        console.warn(`[Deepgram] Attempted model: ${deepgramOptions.model}, language: ${deepgramOptions.language}`)
+        console.log(`[Deepgram] Retrying without language parameter (auto-detect)...`)
+        
+        // Retry without language parameter
+        const retryOptions = { ...deepgramOptions }
+        delete retryOptions.language
+        
+        const retryCall = await deepgram.listen.prerecorded.transcribeUrl(
+          { url: audioUrl },
+          retryOptions
+        )
+        
+        if (retryCall.error) {
+          throw createTranscriptionError(
+            TranscriptionErrorCode.API_ERROR,
+            `Deepgram API error: ${retryCall.error.message || errorMessage}`,
+            false
+          )
+        }
+        
+        // Use retry result
+        result = retryCall.result
+        error = null
+        console.log(`[Deepgram] Retry successful without language parameter`)
+      } else if (errorMessage.toLowerCase().includes('no such model') || 
+                 errorMessage.toLowerCase().includes('model/language/tier')) {
+        throw createTranscriptionError(
+          TranscriptionErrorCode.API_ERROR,
+          `Deepgram model/language combination not supported. Model: ${deepgramOptions.model}, Language: ${deepgramOptions.language || 'auto-detect'}. Try using a different model or removing the language parameter.`,
+          false
+        )
+      } else {
+        throw createTranscriptionError(
+          TranscriptionErrorCode.API_ERROR,
+          `Deepgram API error: ${errorMessage}`,
+          true
+        )
+      }
     }
 
     console.log(`[Deepgram] Transcription completed for ${filename}`)
