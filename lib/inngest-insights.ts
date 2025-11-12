@@ -50,17 +50,28 @@ export const generateCallInsights = inngest.createFunction(
       const transcript = await step.run('fetch-transcript', async () => {
         await updateInsightsProgress(callId, event.id, 10, 'fetching', 'Fetching transcript...')
 
+        console.log(`Fetching transcript ${transcriptId} for call ${callId}`)
+        
         const { data, error } = await supabase
           .from('transcripts')
-          .select('transcript, edited_transcript')
+          .select('transcript, edited_transcript, raw_transcript, transcription_status')
           .eq('id', transcriptId)
           .single()
 
         if (error || !data) {
+          console.error(`Failed to fetch transcript ${transcriptId}:`, error)
           throw new Error(`Failed to fetch transcript: ${error?.message || 'Not found'}`)
         }
 
-        const transcriptText = data.edited_transcript || data.transcript
+        // Check transcription status
+        if (data.transcription_status !== 'completed') {
+          console.error(`Transcript ${transcriptId} not completed. Status: ${data.transcription_status}`)
+          throw new Error(`Transcript not completed. Status: ${data.transcription_status}`)
+        }
+
+        // Try edited_transcript first, then transcript (legacy), then raw_transcript
+        const transcriptText = data.edited_transcript || data.transcript || data.raw_transcript
+        
         if (!transcriptText || transcriptText.trim().length === 0) {
           // Handle empty transcript gracefully - create placeholder insights
           console.log(`Empty transcript for call ${callId} - creating placeholder insights`)
@@ -78,11 +89,18 @@ export const generateCallInsights = inngest.createFunction(
         cachedInsights = await step.run('check-cache', async () => {
           await updateInsightsProgress(callId, event.id, 20, 'analyzing', 'Checking cache...')
 
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('insights')
             .select('*')
             .eq('call_id', callId)
-            .single()
+            .maybeSingle() // Use maybeSingle() instead of single() to avoid PGRST116 error
+
+          // PGRST116 means no rows found, which is expected for new insights
+          if (error && error.code !== 'PGRST116') {
+            console.warn(`Error checking cache for call ${callId}:`, error)
+            // Continue anyway - we'll generate new insights
+            return null
+          }
 
           return data
         })

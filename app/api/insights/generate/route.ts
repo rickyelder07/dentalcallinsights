@@ -56,14 +56,24 @@ export async function POST(req: NextRequest) {
     // Get call and verify ownership (RLS will handle team access)
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('id, call_duration_seconds, user_id, filename, team_id, transcript:transcripts!inner(id, transcript, edited_transcript, transcription_status)')
+      .select('id, call_duration_seconds, user_id, filename, team_id, transcript:transcripts!inner(id, transcript, edited_transcript, raw_transcript, transcription_status)')
       .eq('id', callId)
       .single()
     
     if (callError || !call) {
+      console.error('Failed to fetch call:', callError)
       return NextResponse.json(
-        { error: 'Call not found or access denied' },
+        { error: 'Call not found or access denied', details: callError?.message },
         { status: 404 }
+      )
+    }
+
+    // Validate transcript exists
+    if (!call.transcript) {
+      console.error(`No transcript found for call ${callId}`)
+      return NextResponse.json(
+        { error: 'Transcript not found for this call. Please ensure transcription is completed first.' },
+        { status: 400 }
       )
     }
 
@@ -124,21 +134,40 @@ export async function POST(req: NextRequest) {
     
     // Check if transcript is completed
     if (call.transcript.transcription_status !== 'completed') {
+      console.warn(`Transcript not ready for call ${callId}. Status: ${call.transcript.transcription_status}`)
       return NextResponse.json(
         { error: `Transcript not ready. Status: ${call.transcript.transcription_status}` },
         { status: 400 }
       )
     }
+
+    // Validate transcript has content
+    const transcriptText = call.transcript.edited_transcript || call.transcript.transcript || call.transcript.raw_transcript
+    if (!transcriptText || transcriptText.trim().length === 0) {
+      console.error(`Transcript is empty for call ${callId}`)
+      return NextResponse.json(
+        { error: 'Transcript is empty. Cannot generate insights.' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`Preparing to generate insights for call ${callId}, transcript length: ${transcriptText.length} chars`)
     
     // Check for existing insights (if not forcing regeneration)
     if (!forceRegenerate) {
-      const { data: existingInsights } = await supabase
+      const { data: existingInsights, error: insightsFetchError } = await supabase
         .from('insights')
         .select('*')
         .eq('call_id', callId)
-        .single()
+        .maybeSingle() // Use maybeSingle() instead of single() to avoid PGRST116 error
       
-      if (existingInsights) {
+      // PGRST116 means no rows found, which is expected for new insights
+      if (insightsFetchError && insightsFetchError.code !== 'PGRST116') {
+        console.error('Error checking for existing insights:', insightsFetchError)
+        // Continue anyway - we'll generate new insights
+      }
+      
+      if (existingInsights && !insightsFetchError) {
         // Return cached insights in expected format (no job needed)
         const formattedInsights = {
           summary: {

@@ -56,20 +56,17 @@ export default function InsightsPanel({
         .from('insights')
         .select('*')
         .eq('call_id', callId)
-        .single()
+        .maybeSingle() // Use maybeSingle() instead of single() to avoid PGRST116 error
       
-      // Log the error for debugging
-      if (fetchError) {
-        console.log('Fetch insights error:', fetchError)
-        // If error is 406 (PGRST116), it means no rows found - this is expected for first time
-        // Continue to generate insights
-        if (fetchError.code !== 'PGRST116') {
-          console.error('Unexpected error fetching insights:', fetchError)
-          setError(`Failed to fetch insights: ${fetchError.message}`)
-          setIsLoading(false)
-          return
-        }
+      // Log the error for debugging (only if it's not the expected "no rows" error)
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Unexpected error fetching insights:', fetchError)
+        setError(`Failed to fetch insights: ${fetchError.message}`)
+        setIsLoading(false)
+        return
       }
+      
+      // PGRST116 means no rows found - this is expected for first time, continue to generate
       
       // If insights exist, use them (no API call)
       if (existingInsights && !fetchError) {
@@ -194,16 +191,21 @@ export default function InsightsPanel({
           .from('insights')
           .select('*')
           .eq('call_id', callId)
-          .single()
+          .maybeSingle() // Use maybeSingle() instead of single() to avoid PGRST116 error
         
         // Check job status
-        const { data: job } = await supabase
+        const { data: job, error: jobError } = await supabase
           .from('insights_jobs')
           .select('status')
           .eq('call_id', callId)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle() // Use maybeSingle() instead of single() to avoid PGRST116 error
+        
+        // Handle job fetch errors (PGRST116 is expected if no job exists yet)
+        if (jobError && jobError.code !== 'PGRST116') {
+          console.error('Error fetching job status:', jobError)
+        }
         
         if (job?.status === 'completed' && updatedInsights) {
           clearInterval(pollInterval)
