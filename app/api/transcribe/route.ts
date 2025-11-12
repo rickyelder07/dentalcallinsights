@@ -15,9 +15,9 @@ import {
   transcribeAudioFromUrl,
   calculateConfidenceScore,
   formatSegmentsToTimestamps,
-  validateOpenAIConfig,
+  validateTranscriptionConfig,
   isTranscriptionError,
-} from '@/lib/openai'
+} from '@/lib/transcription-provider'
 import type { TranscriptionRequest, TranscriptionJobResponse } from '@/types/transcription'
 
 const STORAGE_BUCKET = 'audio-files'
@@ -43,17 +43,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validate OpenAI configuration
-    console.log('Validating OpenAI configuration...')
-    const configValidation = validateOpenAIConfig()
+    // Validate transcription provider configuration
+    console.log('Validating transcription provider configuration...')
+    const configValidation = await validateTranscriptionConfig()
     if (!configValidation.valid) {
-      console.error('OpenAI configuration invalid:', configValidation.error)
+      console.error(`${configValidation.provider} configuration invalid:`, configValidation.error)
       return NextResponse.json(
         { error: configValidation.error },
         { status: 500 }
       )
     }
-    console.log('OpenAI configuration valid')
+    console.log(`${configValidation.provider} configuration valid`)
 
     // Get user from session
     console.log('Getting user from session...')

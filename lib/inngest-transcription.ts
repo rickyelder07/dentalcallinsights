@@ -9,8 +9,8 @@ import {
   transcribeAudioFromUrl,
   calculateConfidenceScore,
   formatSegmentsToTimestamps,
-  validateOpenAIConfig,
-} from './openai'
+  validateTranscriptionConfig,
+} from './transcription-provider'
 import { applyUserCorrections } from './transcription-corrections'
 import { updateTranscriptionProgress, markTranscriptionComplete, markTranscriptionFailed } from './inngest'
 
@@ -39,10 +39,10 @@ export const transcribeCall = inngest.createFunction(
     const callDetails = await step.run('validate-and-fetch', async () => {
       console.log(`Fetching call details for ${callId}`)
       
-      // Validate OpenAI configuration
-      const configValidation = validateOpenAIConfig()
+      // Validate transcription provider configuration
+      const configValidation = await validateTranscriptionConfig()
       if (!configValidation.valid) {
-        throw new Error(`OpenAI configuration invalid: ${configValidation.error}`)
+        throw new Error(`${configValidation.provider} configuration invalid: ${configValidation.error}`)
       }
       
       // Get call details from database
@@ -83,7 +83,8 @@ export const transcribeCall = inngest.createFunction(
     
     // Step 3: Download and transcribe audio
     const transcriptionResult = await step.run('transcribe-audio', async () => {
-      console.log(`Starting OpenAI transcription for ${filename}`)
+      const provider = process.env.TRANSCRIPTION_PROVIDER || 'openai'
+      console.log(`Starting ${provider} transcription for ${filename}`)
       
       try {
         // Update progress
@@ -101,7 +102,7 @@ export const transcribeCall = inngest.createFunction(
           }
         )
         
-        console.log(`OpenAI transcription completed for ${filename}`)
+        console.log(`${provider} transcription completed for ${filename}`)
         
         // Update progress
         await updateTranscriptionProgress(callId, '', 75, 'transcribing', 'Processing transcription...')
