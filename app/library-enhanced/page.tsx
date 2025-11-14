@@ -401,7 +401,7 @@ export default function EnhancedLibraryPage() {
 
     const totalSeconds = callsToTranscribe.reduce((sum, c) => sum + (c.call_duration_seconds || 0), 0)
     const totalMinutes = totalSeconds / 60
-    const estCost = totalMinutes * 0.006
+    const estCost = totalMinutes * 0.0043 // Deepgram Nova 2 pricing
 
     if (!confirm(
       `Transcribe ${callsToTranscribe.length} call(s)?\n\n` +
@@ -607,7 +607,7 @@ export default function EnhancedLibraryPage() {
     // Calculate costs
     const totalSeconds = callsToTranscribe.reduce((sum, c) => sum + (c.call_duration_seconds || 0), 0)
     const totalMinutes = totalSeconds / 60
-    const transcriptionCost = totalMinutes * 0.006 // Deepgram/OpenAI transcription cost
+    const transcriptionCost = totalMinutes * 0.0043 // Deepgram Nova 2 pricing
 
     const confirmMessage = 
       `Process ${totalToProcess} call(s) - Transcribe + AI Insights?\n\n` +

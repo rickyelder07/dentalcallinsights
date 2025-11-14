@@ -63,9 +63,9 @@ export default function UploadPage() {
   // Calculate estimated cost when audio files change
   useEffect(() => {
     if (audioFiles.length > 0) {
-      // Estimate: average 2 minutes per call, $0.006 per minute for transcription
+      // Estimate: average 2 minutes per call, $0.0043 per minute for Deepgram Nova 2
       const estimatedMinutes = audioFiles.length * 2
-      const cost = estimatedMinutes * 0.006
+      const cost = estimatedMinutes * 0.0043
       setEstimatedCost(cost)
     } else {
       setEstimatedCost(0)
