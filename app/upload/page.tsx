@@ -29,7 +29,6 @@ export default function UploadPage() {
   
   // Auto-process feature
   const [autoProcess, setAutoProcess] = useState(false)
-  const [showProcessConfirm, setShowProcessConfirm] = useState(false)
   const [estimatedCost, setEstimatedCost] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showTranscriptionProgress, setShowTranscriptionProgress] = useState(false)
@@ -219,9 +218,12 @@ export default function UploadPage() {
       if (result.success && result.callsCreated && result.callsCreated.length > 0) {
         setUploadedCallIds(result.callsCreated)
         
-        // If auto-process is enabled, show confirmation dialog
+        // If auto-process is enabled, start processing immediately
         if (autoProcess) {
-          setShowProcessConfirm(true)
+          // Start processing automatically (no confirmation dialog)
+          setTimeout(() => {
+            startProcessing()
+          }, 500)
         } else {
           // Otherwise redirect to library after a short delay
           setTimeout(() => {
@@ -244,20 +246,6 @@ export default function UploadPage() {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-  }
-
-  // Handle auto-process confirmation
-  const handleProcessConfirm = async () => {
-    setShowProcessConfirm(false)
-    await startProcessing()
-  }
-
-  const handleProcessCancel = () => {
-    setShowProcessConfirm(false)
-    // Redirect to library
-    setTimeout(() => {
-      router.push('/library-enhanced')
-    }, 1000)
   }
 
   // Start processing uploaded calls
@@ -618,16 +606,21 @@ export default function UploadPage() {
               )}
               
               {uploadResult.success && autoProcess && (
-                <p className="mt-3 text-sm font-medium text-purple-700">
-                  ⚡ Preparing to process {uploadedCallIds.length} call{uploadedCallIds.length !== 1 ? 's' : ''}...
-                </p>
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-purple-700 mb-2">
+                    ⚡ Processing {uploadedCallIds.length} call{uploadedCallIds.length !== 1 ? 's' : ''}...
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Stay on this page to track progress. Processing continues in the background.
+                  </p>
+                </div>
               )}
             </div>
           </div>
         )}
 
         {/* Auto-Process Checkbox */}
-        {audioFiles.length > 0 && !isUploading && (
+        {audioFiles.length > 0 && !isUploading && !uploadResult && (
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-4">
             <label className="flex items-start cursor-pointer group">
               <input
@@ -646,7 +639,7 @@ export default function UploadPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-700">
-                  Automatically transcribe and generate AI insights for all uploaded calls
+                  Processing will start automatically after upload completes. You can leave this window open to track progress.
                 </p>
                 
                 {autoProcess && (
@@ -662,8 +655,13 @@ export default function UploadPage() {
                       </li>
                     </ul>
                     <p className="mt-2 text-xs text-gray-500">
-                      * Based on average 2 min per call. Jobs run in background.
+                      * Based on average 2 min per call. Processing runs in background.
                     </p>
+                    <div className="mt-3 p-2 bg-blue-50 border border-blue-300 rounded">
+                      <p className="text-xs text-blue-800">
+                        ✓ By checking this box, you authorize processing of {audioFiles.length} call{audioFiles.length !== 1 ? 's' : ''} at the estimated cost shown above.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -742,69 +740,6 @@ export default function UploadPage() {
           </div>
         )}
       </form>
-
-      {/* Confirmation Dialog */}
-      {showProcessConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Ready to Process?</h3>
-            </div>
-
-            <div className="mb-6 space-y-3">
-              <p className="text-gray-700">
-                Process <span className="font-semibold text-blue-600">{uploadedCallIds.length} uploaded call{uploadedCallIds.length !== 1 ? 's' : ''}</span>?
-              </p>
-              
-              <div className="bg-blue-50 rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">Transcriptions:</span>
-                  <span className="font-semibold text-gray-900">{uploadedCallIds.length}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">AI Insights:</span>
-                  <span className="font-semibold text-gray-900">{uploadedCallIds.length}</span>
-                </div>
-                <div className="border-t border-blue-200 pt-2 mt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Estimated cost:</span>
-                    <span className="text-lg font-bold text-blue-600">~${estimatedCost.toFixed(4)}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    (Insights included with GPT-4o-mini)
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-800">
-                  ⚠️ <span className="font-semibold">Processing will start immediately</span> and continue in the background. This may take several minutes.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleProcessCancel}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-              >
-                Skip Processing
-              </button>
-              <button
-                onClick={handleProcessConfirm}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 font-medium shadow-lg transition-all"
-              >
-                ⚡ Yes, Process All
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Transcription Progress */}
       {showTranscriptionProgress && (
