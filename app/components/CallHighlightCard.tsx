@@ -5,7 +5,6 @@
  * Displays individual call information in a compact card format
  */
 
-import { useRouter } from 'next/navigation'
 import type { CallHighlight } from '@/types/analytics'
 import { formatCallTime } from '@/lib/datetime'
 
@@ -20,7 +19,6 @@ export default function CallHighlightCard({
   showScore = false,
   showNewPatientBadge = false,
 }: CallHighlightCardProps) {
-  const router = useRouter()
   const { call, insights, score, duration, sentiment } = callHighlight
 
   const formatDuration = (seconds: number): string => {
@@ -50,7 +48,7 @@ export default function CallHighlightCard({
 
   return (
     <div
-      onClick={() => router.push(`/calls/${call.id}`)}
+      onClick={() => window.open(`/calls/${call.id}`, '_blank', 'noopener,noreferrer')}
       className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
     >
       <div className="flex items-start justify-between gap-3">
