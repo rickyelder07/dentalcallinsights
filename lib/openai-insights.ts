@@ -23,7 +23,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const GPT_MODEL = 'gpt-4o-mini'
 const MAX_TOKENS = 800
 const TEMPERATURE = 0.3
-const MIN_CALL_DURATION_SECONDS = 6
+const MIN_CALL_DURATION_SECONDS = 8
 
 /**
  * Validate OpenAI configuration

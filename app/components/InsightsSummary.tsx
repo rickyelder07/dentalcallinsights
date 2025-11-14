@@ -28,7 +28,7 @@ export default function InsightsSummary({ summary }: InsightsSummaryProps) {
           <span className="text-4xl mb-2 block">⏱️</span>
           <p className="text-gray-600 font-medium">Too short for insights</p>
           <p className="text-sm text-gray-500 mt-2">
-            Call duration is less than 6 seconds
+            Call duration is less than 8 seconds
           </p>
         </div>
       ) : (

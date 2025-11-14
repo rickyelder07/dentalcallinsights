@@ -80,7 +80,7 @@ Important:
 }
 
 /**
- * Prompt for "too short" calls (< 6 seconds)
+ * Prompt for "too short" calls (< 8 seconds)
  * Returns a standardized response without calling GPT-4o
  */
 export function createTooShortResponse() {

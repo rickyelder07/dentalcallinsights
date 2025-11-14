@@ -151,6 +151,62 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Validate call duration (minimum 8 seconds for meaningful insights)
+    const MIN_CALL_DURATION = 8
+    if (call.call_duration_seconds !== null && call.call_duration_seconds !== undefined && call.call_duration_seconds < MIN_CALL_DURATION) {
+      console.log(`Call ${callId} is too short (${call.call_duration_seconds}s < ${MIN_CALL_DURATION}s) - returning placeholder insights`)
+      
+      // Create placeholder insights for too-short calls
+      const { error: insightsError } = await supabase
+        .from('insights')
+        .upsert(
+          {
+            call_id: callId,
+            user_id: user.id,
+            team_id: call.team_id || null,
+            overall_sentiment: 'neutral',
+            key_points: ['Call too short for detailed insights (less than 8 seconds)'],
+            action_items: [],
+            red_flags: [],
+            call_outcome: 'too_short',
+            staff_performance: 'professional',
+            model_used: 'N/A - Too Short',
+          },
+          {
+            onConflict: 'call_id',
+          }
+        )
+
+      if (insightsError) {
+        console.error('Failed to create too-short insights:', insightsError)
+      }
+
+      // Create completed job record
+      const { error: jobError } = await supabase
+        .from('insights_jobs')
+        .upsert({
+          call_id: callId,
+          user_id: user.id,
+          team_id: call.team_id || null,
+          status: 'completed',
+          cached: false,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          metadata: { auto_completed: true, reason: 'Call too short', duration: call.call_duration_seconds, progress: 100 }
+        })
+
+      if (jobError) {
+        console.error('Failed to create too-short insights job:', jobError)
+      }
+
+      return NextResponse.json({
+        success: true,
+        status: 'completed',
+        tooShort: true,
+        message: `Call duration (${call.call_duration_seconds}s) is too short for AI insights. Minimum duration is ${MIN_CALL_DURATION} seconds.`
+      })
+    }
+
     console.log(`Preparing to generate insights for call ${callId}, transcript length: ${transcriptText.length} chars`)
     
     // Check for existing insights (if not forcing regeneration)
