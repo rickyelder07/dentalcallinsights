@@ -169,6 +169,7 @@ export const generateCallInsights = inngest.createFunction(
               user_id: userId,
               team_id: callDetails.team_id || null, // Include team_id from call
               overall_sentiment: insights.sentiment?.overall || 'neutral',
+              patient_satisfaction: insights.sentiment?.patient_satisfaction || 'neutral',
               key_points: insights.summary?.key_points || [],
               action_items: insights.action_items || [],
               red_flags: insights.red_flags || [],
@@ -231,6 +232,7 @@ export const generateCallInsights = inngest.createFunction(
             user_id: userId,
             team_id: call?.team_id || null, // Include team_id from call
               overall_sentiment: 'neutral',
+            patient_satisfaction: 'neutral',
             key_points: ['Transcript is empty or too short for analysis'],
             action_items: [],
             red_flags: [],

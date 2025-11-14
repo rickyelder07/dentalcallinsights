@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             team_id: call.team_id || null, // Include team_id from call
             overall_sentiment: 'neutral',
+            patient_satisfaction: 'neutral',
             key_points: ['No recording available for this call.'],
             action_items: [],
             red_flags: [],
@@ -165,6 +166,7 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             team_id: call.team_id || null,
             overall_sentiment: 'neutral',
+            patient_satisfaction: 'neutral',
             key_points: ['Call too short for detailed insights (less than 8 seconds)'],
             action_items: [],
             red_flags: [],
