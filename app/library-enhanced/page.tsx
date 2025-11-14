@@ -584,6 +584,236 @@ export default function EnhancedLibraryPage() {
     }
   }
 
+  // Combined operation: Transcribe + Insights
+  const handleBulkProcessAll = async () => {
+    const callsToTranscribe = filteredCalls.filter((c) => 
+      selectedCalls.has(c.id) && 
+      (!c.transcript || c.transcript.transcription_status !== 'completed')
+    )
+
+    const callsWithTranscriptNoInsights = filteredCalls.filter((c) =>
+      selectedCalls.has(c.id) &&
+      c.transcript?.transcription_status === 'completed' &&
+      !c.insights
+    )
+
+    const totalToProcess = callsToTranscribe.length + callsWithTranscriptNoInsights.length
+
+    if (totalToProcess === 0) {
+      alert('All selected calls already have transcripts and insights.')
+      return
+    }
+
+    // Calculate costs
+    const totalSeconds = callsToTranscribe.reduce((sum, c) => sum + (c.call_duration_seconds || 0), 0)
+    const totalMinutes = totalSeconds / 60
+    const transcriptionCost = totalMinutes * 0.006 // Deepgram/OpenAI transcription cost
+
+    const confirmMessage = 
+      `Process ${totalToProcess} call(s) - Transcribe + AI Insights?\n\n` +
+      `Breakdown:\n` +
+      `• ${callsToTranscribe.length} call(s) need transcription\n` +
+      `• ${callsWithTranscriptNoInsights.length} call(s) already transcribed, need insights\n` +
+      `• ${callsToTranscribe.length} new insights will be generated after transcription\n\n` +
+      `Estimated transcription cost: $${transcriptionCost.toFixed(4)}\n` +
+      `(Insights generation included - GPT-4o-mini)\n\n` +
+      `Jobs will run in the background. This may take several minutes.`
+
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    setIsProcessing(true)
+    setProcessingStatus('Starting batch processing...')
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        alert('Please sign in to process calls')
+        return
+      }
+
+      // Step 1: Transcribe calls that need it
+      const transcriptionJobs: any[] = []
+      if (callsToTranscribe.length > 0) {
+        setProcessingStatus(`Queuing ${callsToTranscribe.length} transcription job(s)...`)
+        
+        for (let i = 0; i < callsToTranscribe.length; i++) {
+          const call = callsToTranscribe[i]
+          
+          try {
+            setProcessingStatus(`Starting transcription ${i + 1}/${callsToTranscribe.length}: ${call.filename}`)
+            
+            const response = await fetch('/api/transcribe', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ callId: call.id }),
+            })
+
+            if (response.ok) {
+              const result = await response.json()
+              transcriptionJobs.push({
+                id: result.jobId,
+                callId: call.id,
+                filename: call.filename,
+                status: 'pending'
+              })
+              console.log(`Transcription queued for ${call.filename}`)
+            }
+
+            // Small delay between requests
+            if (i < callsToTranscribe.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+          } catch (error) {
+            console.error(`Failed to queue transcription for ${call.filename}:`, error)
+          }
+        }
+
+        // Show transcription progress
+        if (transcriptionJobs.length > 0) {
+          setTranscriptionJobs(transcriptionJobs)
+          setShowTranscriptionProgress(true)
+        }
+      }
+
+      // Step 2: Queue insights for calls that already have transcripts
+      const insightJobs: any[] = []
+      if (callsWithTranscriptNoInsights.length > 0) {
+        setProcessingStatus(`Queuing ${callsWithTranscriptNoInsights.length} insights job(s)...`)
+        
+        for (const call of callsWithTranscriptNoInsights) {
+          try {
+            const response = await fetch('/api/insights/generate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ callId: call.id }),
+            })
+
+            if (response.ok) {
+              const result = await response.json()
+              insightJobs.push({
+                id: result.jobId || call.id,
+                callId: call.id,
+                filename: call.filename,
+                status: result.cached ? 'completed' : 'processing',
+                cached: result.cached || false,
+              })
+              console.log(`Insights queued for ${call.filename}`)
+            }
+          } catch (error) {
+            console.error(`Failed to queue insights for ${call.filename}:`, error)
+          }
+        }
+
+        // Show insights progress
+        if (insightJobs.length > 0) {
+          setInsightsJobs(insightJobs)
+          setShowInsightsProgress(true)
+        }
+      }
+
+      // Step 3: Set up auto-insights trigger for newly transcribed calls
+      // We'll use a polling mechanism to check when transcriptions complete and trigger insights
+      if (transcriptionJobs.length > 0) {
+        setProcessingStatus('Monitoring transcriptions to auto-generate insights...')
+        
+        // Poll for completed transcriptions and trigger insights
+        const pollInterval = setInterval(async () => {
+          try {
+            const { data: transcriptsData } = await supabase
+              .from('transcripts')
+              .select('id, call_id, transcription_status')
+              .in('call_id', transcriptionJobs.map(j => j.callId))
+
+            const completedTranscripts = transcriptsData?.filter(t => t.transcription_status === 'completed') || []
+            
+            // Check which calls need insights triggered
+            for (const transcript of completedTranscripts) {
+              const alreadyQueued = insightJobs.some(j => j.callId === transcript.call_id)
+              if (!alreadyQueued) {
+                // Check if insights already exist
+                const { data: existingInsights } = await supabase
+                  .from('insights')
+                  .select('id')
+                  .eq('call_id', transcript.call_id)
+                  .maybeSingle()
+
+                if (!existingInsights) {
+                  // Trigger insights generation
+                  const response = await fetch('/api/insights/generate', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ callId: transcript.call_id }),
+                  })
+
+                  if (response.ok) {
+                    const result = await response.json()
+                    const call = transcriptionJobs.find(j => j.callId === transcript.call_id)
+                    insightJobs.push({
+                      id: result.jobId || transcript.call_id,
+                      callId: transcript.call_id,
+                      filename: call?.filename || 'Unknown',
+                      status: 'processing',
+                      cached: false,
+                    })
+                    
+                    // Update insights progress display
+                    setInsightsJobs([...insightJobs])
+                    setShowInsightsProgress(true)
+                    
+                    console.log(`Auto-triggered insights for ${call?.filename}`)
+                  }
+                }
+              }
+            }
+
+            // Stop polling when all transcriptions are complete
+            if (completedTranscripts.length === transcriptionJobs.length) {
+              clearInterval(pollInterval)
+              setProcessingStatus('')
+              clearSelection()
+            }
+          } catch (error) {
+            console.error('Error polling transcriptions:', error)
+          }
+        }, 10000) // Poll every 10 seconds
+
+        // Stop polling after 30 minutes (safety)
+        setTimeout(() => {
+          clearInterval(pollInterval)
+          setProcessingStatus('')
+        }, 30 * 60 * 1000)
+      } else {
+        setProcessingStatus('')
+        clearSelection()
+      }
+
+      alert(
+        `Batch processing started!\n\n` +
+        `• ${transcriptionJobs.length} transcription job(s) queued\n` +
+        `• ${insightJobs.length} insights job(s) queued\n` +
+        `• ${transcriptionJobs.length} auto-insights will be triggered after transcription\n\n` +
+        `Track progress in the status windows. Jobs continue in the background.`
+      )
+
+    } catch (error) {
+      console.error('Batch processing error:', error)
+      alert(`Failed to start batch processing: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
 
   const handleExport = () => {
     if (selectedCalls.size === 0) {
@@ -959,6 +1189,7 @@ export default function EnhancedLibraryPage() {
         onClearSelection={clearSelection}
         onBulkTranscribe={handleBulkTranscribe}
         onBulkGenerateInsights={handleBulkGenerateInsights}
+        onBulkProcessAll={handleBulkProcessAll}
         onExport={handleExport}
       />
 
