@@ -170,28 +170,89 @@ export const transcribeCall = inngest.createFunction(
         // Update progress
         await updateTranscriptionProgress(callId, '', 25, 'downloading', 'Downloading audio file...')
         
-        // For inbound calls with auto-detect, use standard auto-detection
-        // Add a prompt to help the model focus on the actual conversation (after answering machine)
+        // For inbound calls with auto-detect, detect language from segments after 30 seconds
+        // First transcribe with auto-detect to get segments, then analyze segments after 30s
         let transcriptionPrompt = prompt
         // Treat empty string as auto-detect (null/undefined)
         const effectiveLanguage = (language && language.trim() !== '') ? language : detectedLanguage
         let transcriptionLanguage = effectiveLanguage || null
         
-        // Add prompt for inbound calls to help skip the English answering machine
-        if (isInbound) {
-          // Add prompt to help the model focus on the actual conversation
-          // The first 30 seconds contain an English answering machine that should be ignored
+        // For inbound calls with auto-detect, do a two-pass approach:
+        // 1. First pass: Transcribe with auto-detect to get segments
+        // 2. Analyze segments after 30 seconds to detect Spanish vs English
+        // 3. Second pass: Re-transcribe with detected language (es or en)
+        if (isInbound && !transcriptionLanguage) {
+          console.log(`Inbound call with auto-detect - performing language detection from segments after 30 seconds`)
+          
+          // First pass: Transcribe with auto-detect to get segments
+          const detectionPrompt = (prompt || '') + ' This is an inbound phone call. The first 30 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
+          const detectionResponse = await transcribeAudioFromUrl(
+            signedUrl,
+            filename,
+            {
+              language: undefined, // Use auto-detect
+              prompt: detectionPrompt,
+              responseFormat: 'verbose_json',
+              timestampGranularities: ['segment'],
+            }
+          )
+          
+          console.log(`First pass completed - detected language: ${detectionResponse.language}`)
+          
+          // Analyze segments that start after 30 seconds
+          const segmentsAfter30s = (detectionResponse.segments || []).filter(
+            (segment: any) => segment.start >= 30
+          )
+          
+          console.log(`Found ${segmentsAfter30s.length} segments after 30 seconds`)
+          
+          // Check for Spanish indicators in segments after 30 seconds
+          const spanishIndicators = [
+            'hola', 'gracias', 'por favor', 'buenos días', 'buenas tardes', 'buenas noches',
+            'señor', 'señora', 'llamada', 'llamar', 'llamé', 'llamó',
+            'hablo', 'habla', 'hablar', 'español', 'espanol',
+            'sí', 'si', 'claro', 'entendido', 'perfecto',
+            'mucho', 'muchas', 'muchos', 'muy', 'más', 'mas',
+            'también', 'tambien', 'tampoco', 'nada', 'nadie',
+            'cómo', 'como', 'cuándo', 'cuando', 'dónde', 'donde',
+            'qué', 'que', 'quién', 'quien', 'por qué', 'porque',
+            'necesito', 'necesita', 'necesitar', 'puedo', 'puede', 'pueden',
+            'quiero', 'quiere', 'quieres', 'deseo', 'desea',
+            'cita', 'doctor', 'dentista', 'oficina', 'clínica'
+          ]
+          
+          const segmentsText = segmentsAfter30s
+            .map((seg: any) => seg.text?.toLowerCase() || '')
+            .join(' ')
+          
+          const hasSpanishContent = spanishIndicators.some(word => 
+            segmentsText.includes(word)
+          )
+          
+          // Determine language: Spanish if indicators found, otherwise English
+          const detectedLang = hasSpanishContent ? 'es' : 'en'
+          
+          console.log(`Language detection result: ${detectedLang} (Spanish indicators found: ${hasSpanishContent})`)
+          console.log(`Sample text from segments after 30s: ${segmentsText.substring(0, 200)}`)
+          
+          // Second pass: Re-transcribe with detected language
+          transcriptionLanguage = detectedLang
+          transcriptionPrompt = (prompt || '') + (detectedLang === 'es' 
+            ? ' This is a Spanish phone call. The first 30 seconds contain an automated English greeting. Transcribe the Spanish conversation that follows.'
+            : ' This is an English phone call. The first 30 seconds contain an automated greeting. Transcribe the English conversation that follows.')
+        } else if (isInbound) {
+          // For inbound calls with manually specified language, still add prompt
           transcriptionPrompt = (prompt || '') + ' This is an inbound phone call. The first 30 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
           console.log(`Inbound call - using prompt to skip answering machine (first 30 seconds)`)
         }
         
-        // Transcribe audio with enhanced logging
+        // Transcribe audio with determined language
         // Deepgram Nova-2 is already the default model (set in deepgram.ts)
         const whisperResponse = await transcribeAudioFromUrl(
           signedUrl,
           filename,
           {
-            language: transcriptionLanguage || undefined, // Let provider auto-detect if not specified
+            language: transcriptionLanguage || undefined, // Use detected language or auto-detect
             prompt: transcriptionPrompt,
             responseFormat: 'verbose_json',
             timestampGranularities: ['segment'],
@@ -200,54 +261,6 @@ export const transcribeCall = inngest.createFunction(
         
         console.log(`${provider} transcription completed for ${filename}`)
         console.log(`Requested language: ${transcriptionLanguage || 'auto-detect'}, Detected language: ${whisperResponse.language}`)
-        
-        // For inbound calls with Spanish default, always check transcript quality
-        // Even if Spanish was forced, Deepgram might still detect English from the answering machine
-        // For inbound calls, check transcript quality if it seems garbled
-        // The English answering machine (first 30 seconds) might cause issues
-        // Only re-transcribe if transcript is clearly garbled
-        if (isInbound && !transcriptionLanguage) {
-          const transcriptText = whisperResponse.text?.toLowerCase() || ''
-          
-          // Check if transcript seems garbled (common when wrong language is used)
-          const longWordMatches = transcriptText.match(/[a-z]{20,}/g)
-          const isGarbled = transcriptText.length > 0 && 
-            (transcriptText.split(' ').filter(w => w.length > 15).length > 5 || // Many long words
-             (longWordMatches && longWordMatches.length > 3)) // Many long character sequences
-          
-          // Only re-transcribe if transcript is clearly garbled
-          if (isGarbled) {
-            console.log(`Inbound call quality check failed - transcript appears garbled, re-transcribing with enhanced prompt`)
-            console.log(`Detected language: ${whisperResponse.language}, Garbled: ${isGarbled}`)
-            
-            // Re-transcribe with stronger prompt to skip answering machine
-            const strongerPrompt = 'This is an inbound phone call. Ignore the first 30 seconds which contain an automated English greeting. Detect and transcribe the primary language spoken in the actual conversation that follows.'
-            const retryResponse = await transcribeAudioFromUrl(
-              signedUrl,
-              filename,
-              {
-                language: undefined, // Use auto-detect
-                prompt: strongerPrompt,
-                responseFormat: 'verbose_json',
-                timestampGranularities: ['segment'],
-              }
-            )
-            
-            console.log(`Re-transcription completed, new detected language: ${retryResponse.language}`)
-            const confidenceScore = calculateConfidenceScore(retryResponse.segments)
-            const timestamps = retryResponse.segments
-              ? formatSegmentsToTimestamps(retryResponse.segments)
-              : []
-            
-            return {
-              text: retryResponse.text,
-              segments: retryResponse.segments,
-              confidenceScore,
-              timestamps,
-              language: retryResponse.language || 'en',
-            }
-          }
-        }
         
         // Update progress
         await updateTranscriptionProgress(callId, '', 75, 'transcribing', 'Processing transcription...')
@@ -258,12 +271,18 @@ export const transcribeCall = inngest.createFunction(
           ? formatSegmentsToTimestamps(whisperResponse.segments)
           : []
         
+        // For inbound calls with auto-detect, prioritize the language we detected from segments
+        // Otherwise use the provider's detected language or fallback
+        const finalLanguage = (isInbound && !effectiveLanguage && transcriptionLanguage) 
+          ? transcriptionLanguage 
+          : (whisperResponse.language || transcriptionLanguage || 'en')
+        
         return {
           text: whisperResponse.text,
           segments: whisperResponse.segments,
           confidenceScore,
           timestamps,
-          language: whisperResponse.language || transcriptionLanguage || 'en',
+          language: finalLanguage,
         }
       } catch (error) {
         console.error(`Transcription failed for ${filename}:`, error)
