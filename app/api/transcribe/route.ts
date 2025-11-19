@@ -368,6 +368,20 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create transcript: ${upsertError.message}`)
     }
 
+    // Apply inbound call language logic: default to Spanish for inbound calls with auto-detect
+    // This prevents English answering machine from causing incorrect language detection
+    let effectiveLanguage = language
+    let effectivePrompt = prompt
+    
+    if (!effectiveLanguage || effectiveLanguage.trim() === '') {
+      const isInbound = call.call_direction?.toLowerCase() === 'inbound'
+      if (isInbound) {
+        console.log(`Inbound call with auto-detect - defaulting to Spanish to avoid English answering machine interference`)
+        effectiveLanguage = 'es'
+        effectivePrompt = (prompt || '') + ' This is an inbound phone call. The first 15 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
+      }
+    }
+
     // Trigger Inngest transcription event
     // This will handle long-running transcriptions without timeout limits
     try {
@@ -379,8 +393,8 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         filename: storageFilename,
         audioPath: call.audio_path,
-        language,
-        prompt,
+        language: effectiveLanguage,
+        prompt: effectivePrompt,
       })
       console.log(`Inngest transcription event triggered for call ${callId}`)
     } catch (error) {
@@ -393,8 +407,8 @@ export async function POST(req: NextRequest) {
         
         setImmediate(() => {
           processTranscription(callId, call.audio_path, storageFilename, user.id, jobId, {
-            language,
-            prompt,
+            language: effectiveLanguage,
+            prompt: effectivePrompt,
           }).catch(async (error) => {
             console.error('Fallback transcription error:', error)
             await supabase
@@ -492,6 +506,26 @@ async function processTranscription(
     ])
 
     async function performTranscription() {
+    // Get call details to check direction for inbound call logic
+    const { data: callData } = await supabase
+      .from('calls')
+      .select('call_direction')
+      .eq('id', callId)
+      .single()
+
+    // Apply inbound call language logic: default to Spanish for inbound calls with auto-detect
+    let effectiveLanguage = options.language
+    let effectivePrompt = options.prompt
+    
+    if (!effectiveLanguage || effectiveLanguage.trim() === '') {
+      const isInbound = callData?.call_direction?.toLowerCase() === 'inbound'
+      if (isInbound) {
+        console.log(`Inbound call with auto-detect - defaulting to Spanish to avoid English answering machine interference`)
+        effectiveLanguage = 'es'
+        effectivePrompt = (options.prompt || '') + ' This is an inbound phone call. The first 15 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
+      }
+    }
+
     // Get signed URL for audio file (server-side using admin client)
     const storagePath = `${userId}/${filename}`
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
@@ -506,15 +540,15 @@ async function processTranscription(
     console.log(`Created signed URL for: ${storagePath}`)
 
     // Transcribe audio with timeout protection
-    console.log(`Starting OpenAI transcription for ${filename}...`)
+    console.log(`Starting transcription for ${filename}...`)
     const transcriptionStartTime = Date.now()
     
     const whisperResponse = await transcribeAudioFromUrl(
       signedUrlData.signedUrl,
       filename,
       {
-        language: options.language,
-        prompt: options.prompt,
+        language: effectiveLanguage,
+        prompt: effectivePrompt,
         responseFormat: 'verbose_json',
         timestampGranularities: ['segment'],
       }
