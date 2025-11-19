@@ -104,9 +104,24 @@ export default function EnhancedLibraryPage() {
       setIsLoading(true)
       setError(null)
 
+      // Verify Supabase client is initialized
+      if (!supabase) {
+        setError('Database client not initialized. Please refresh the page.')
+        setIsLoading(false)
+        return
+      }
+
       const {
         data: { session },
+        error: sessionError,
       } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+        setError(`Authentication error: ${sessionError.message}`)
+        setIsLoading(false)
+        return
+      }
 
       if (!session) {
         router.push('/login')
@@ -117,20 +132,55 @@ export default function EnhancedLibraryPage() {
       // RLS policies will automatically filter to show:
       // 1. User's own calls
       // 2. Calls from team members (even if team_id is NULL)
-      const { data: callsData, error: fetchError } = await supabase
-        .from('calls')
-        .select(`
-          id, user_id, filename, audio_path, file_size, file_type, upload_status, call_time, call_direction, source_number, source_name, source_extension, destination_number, destination_extension, call_duration_seconds, disposition, time_to_answer_seconds, call_flow, is_new_patient, processing_status, error_message, created_at, updated_at,
-          transcript:transcripts(id, call_id, content, transcript, raw_transcript, edited_transcript, transcription_status, confidence_score, language_code, language, processing_time_seconds, processing_duration_seconds, timestamps, edit_count, error_message, created_at, updated_at),
-          insights:insights(*),
-          qaScore:call_scores(*)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10000) // Increase from default 1000 to support larger datasets
+      // Add retry logic for network errors
+      let callsData = null
+      let fetchError = null
+      const maxRetries = 3
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const result = await supabase
+          .from('calls')
+          .select(`
+            id, user_id, filename, audio_path, file_size, file_type, upload_status, call_time, call_direction, source_number, source_name, source_extension, destination_number, destination_extension, call_duration_seconds, disposition, time_to_answer_seconds, call_flow, is_new_patient, processing_status, error_message, created_at, updated_at,
+            transcript:transcripts(id, call_id, content, transcript, raw_transcript, edited_transcript, transcription_status, confidence_score, language_code, language, processing_time_seconds, processing_duration_seconds, timestamps, edit_count, error_message, created_at, updated_at),
+            insights:insights(*),
+            qaScore:call_scores(*)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(10000) // Increase from default 1000 to support larger datasets
+
+        callsData = result.data
+        fetchError = result.error
+
+        // If successful or non-network error, break
+        if (!fetchError || (fetchError && !fetchError.message?.includes('Failed to fetch'))) {
+          break
+        }
+
+        // If network error and not last attempt, wait and retry
+        if (attempt < maxRetries) {
+          console.warn(`Network error on attempt ${attempt}, retrying...`)
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)) // Exponential backoff
+        }
+      }
 
       if (fetchError) {
         console.error('Supabase error:', fetchError)
-        setError(`Database error: ${fetchError.message}`)
+        console.error('Error details:', {
+          message: fetchError.message,
+          details: fetchError.details,
+          hint: fetchError.hint,
+          code: fetchError.code,
+        })
+        
+        // Handle different error types
+        if (fetchError.message?.includes('Failed to fetch') || fetchError instanceof TypeError) {
+          setError('Network error: Unable to connect to database. Please check your internet connection and try again. If the problem persists, the database service may be temporarily unavailable.')
+        } else if (fetchError.code === 'PGRST116') {
+          setError('Database query timeout. Please try again or contact support if the issue persists.')
+        } else {
+          setError(`Database error: ${fetchError.message || 'Unknown error occurred'}`)
+        }
         return
       }
 
@@ -167,7 +217,14 @@ export default function EnhancedLibraryPage() {
       setCalls(transformedCalls)
     } catch (error) {
       console.error('Error fetching calls:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load calls')
+      // Handle network errors specifically
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        setError('Network error: Unable to connect to database. Please check your internet connection and try again.')
+      } else if (error instanceof Error) {
+        setError(`Error: ${error.message}`)
+      } else {
+        setError('Failed to load calls. Please try refreshing the page.')
+      }
     } finally {
       setIsLoading(false)
     }

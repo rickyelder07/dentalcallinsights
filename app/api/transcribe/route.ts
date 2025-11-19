@@ -86,18 +86,76 @@ export async function POST(req: NextRequest) {
     console.log('User authenticated:', user.id)
 
     // Get call record
+    // First, fetch the call without user_id filter to check team access
     const { data: call, error: callError } = await supabase
       .from('calls')
       .select('*')
       .eq('id', callId)
-      .eq('user_id', user.id)
       .single()
 
     if (callError || !call) {
+      console.error('Call fetch error:', callError)
       return NextResponse.json(
-        { error: 'Call not found or access denied' },
+        { error: 'Call not found' },
         { status: 404 }
       )
+    }
+
+    // Check if user has access to this call:
+    // 1. User owns the call, OR
+    // 2. User is in the same team as the call owner
+    const hasAccess = call.user_id === user.id
+
+    if (!hasAccess) {
+      // Check if users are in the same team
+      const { data: teamMemberships, error: teamError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+
+      if (teamError) {
+        console.error('Team membership check error:', teamError)
+        return NextResponse.json(
+          { error: 'Error checking team access' },
+          { status: 500 }
+        )
+      }
+
+      const userTeamIds = new Set((teamMemberships || []).map((tm: any) => tm.team_id))
+
+      // Check if call owner is in any of the user's teams
+      const { data: ownerMemberships, error: ownerError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', call.user_id)
+        .in('team_id', Array.from(userTeamIds))
+
+      if (ownerError) {
+        console.error('Owner team membership check error:', ownerError)
+        return NextResponse.json(
+          { error: 'Error checking team access' },
+          { status: 500 }
+        )
+      }
+
+      // If call has team_id, check if user is member of that team
+      // OR if call owner and user share any team
+      const hasTeamAccess = 
+        (call.team_id && userTeamIds.has(call.team_id)) ||
+        (ownerMemberships && ownerMemberships.length > 0)
+
+      if (!hasTeamAccess) {
+        console.log('Access denied:', {
+          callUserId: call.user_id,
+          currentUserId: user.id,
+          callTeamId: call.team_id,
+          userTeamIds: Array.from(userTeamIds),
+        })
+        return NextResponse.json(
+          { error: 'Call not found or access denied' },
+          { status: 403 }
+        )
+      }
     }
 
     // Check if call is "No Call Recording" - auto-complete
