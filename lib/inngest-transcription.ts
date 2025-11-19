@@ -248,6 +248,7 @@ export const transcribeCall = inngest.createFunction(
         
         // Transcribe audio with determined language
         // Deepgram Nova-2 is already the default model (set in deepgram.ts)
+        console.log(`Transcribing with language parameter: ${transcriptionLanguage || 'undefined (auto-detect)'}`)
         const whisperResponse = await transcribeAudioFromUrl(
           signedUrl,
           filename,
@@ -261,6 +262,7 @@ export const transcribeCall = inngest.createFunction(
         
         console.log(`${provider} transcription completed for ${filename}`)
         console.log(`Requested language: ${transcriptionLanguage || 'auto-detect'}, Detected language: ${whisperResponse.language}`)
+        console.log(`Language parameter passed to Deepgram: ${transcriptionLanguage || 'undefined'}`)
         
         // Update progress
         await updateTranscriptionProgress(callId, '', 75, 'transcribing', 'Processing transcription...')
@@ -276,6 +278,9 @@ export const transcribeCall = inngest.createFunction(
         const finalLanguage = (isInbound && !effectiveLanguage && transcriptionLanguage) 
           ? transcriptionLanguage 
           : (whisperResponse.language || transcriptionLanguage || 'en')
+        
+        console.log(`Final language determined: ${finalLanguage}`)
+        console.log(`Language breakdown - isInbound: ${isInbound}, effectiveLanguage: ${effectiveLanguage}, transcriptionLanguage: ${transcriptionLanguage}, whisperResponse.language: ${whisperResponse.language}`)
         
         return {
           text: whisperResponse.text,
@@ -293,6 +298,8 @@ export const transcribeCall = inngest.createFunction(
     // Step 4: Translate if Spanish
     const translationResult = await step.run('translate-spanish', async () => {
       const detectedLanguage = transcriptionResult.language?.toLowerCase()
+      
+      console.log(`Translation step - transcriptionResult.language: ${transcriptionResult.language}, detectedLanguage: ${detectedLanguage}`)
       
       // Check if language is Spanish
       if (detectedLanguage === 'es' || detectedLanguage === 'spanish' || detectedLanguage === 'spa') {
@@ -344,6 +351,13 @@ export const transcribeCall = inngest.createFunction(
     const saveResult = await step.run('save-results', async () => {
       console.log(`Saving transcription results for ${callId}`)
       
+      // Determine the language to store in database
+      // Always store the original language (Spanish if detected), not the translated language
+      const languageToStore = translationResult.originalLanguage || transcriptionResult.language || 'en'
+      
+      console.log(`Saving language to database: ${languageToStore}`)
+      console.log(`Language details - transcriptionResult.language: ${transcriptionResult.language}, translationResult.originalLanguage: ${translationResult.originalLanguage}, wasTranslated: ${translationResult.wasTranslated}`)
+      
       const supabase = createAdminClient()
       const processingDuration = Math.floor((Date.now() - Date.now()) / 1000) // This will be calculated properly
       
@@ -359,7 +373,10 @@ export const transcribeCall = inngest.createFunction(
           transcript: correctedText, // Legacy field
           transcription_status: 'completed',
           confidence_score: transcriptionResult.confidenceScore,
-          language: translationResult.wasTranslated ? 'en' : transcriptionResult.language,
+          // Always store the original language, not the translated language
+          // If translated, use originalLanguage; otherwise use transcriptionResult.language
+          // This ensures Spanish calls show as 'es' even if translated to English
+          language: languageToStore,
           timestamps: transcriptionResult.timestamps,
           processing_completed_at: new Date().toISOString(),
           processing_duration_seconds: processingDuration,
