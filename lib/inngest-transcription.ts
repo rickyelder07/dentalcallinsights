@@ -107,6 +107,11 @@ export const transcribeCall = inngest.createFunction(
     // For inbound calls without language specified (auto-detect), we'll use 30-second skip detection
     // This returns a special marker to trigger the 30-second skip logic in Step 4
     const detectedLanguage = await step.run('detect-language', async () => {
+      console.log(`DEBUG detect-language step:`)
+      console.log(`  - language parameter: ${language || 'undefined/empty'}`)
+      console.log(`  - call direction: ${callDetails.call_direction}`)
+      console.log(`  - language.trim() check: ${language ? language.trim() : 'N/A'}`)
+      
       // If language is manually specified (not empty string), use it
       // Empty string or undefined means "Auto-Detect" from UI
       if (language && language.trim() !== '') {
@@ -117,9 +122,11 @@ export const transcribeCall = inngest.createFunction(
       // For inbound calls with auto-detect, return null to trigger 30-second skip detection
       // The 30-second skip logic will analyze segments after 30 seconds to determine Spanish vs English
       const isInbound = callDetails.call_direction?.toLowerCase() === 'inbound'
+      console.log(`  - isInbound check: ${isInbound} (call_direction: ${callDetails.call_direction})`)
       
       if (isInbound) {
         console.log(`Inbound call with auto-detect - will use 30-second skip detection to determine language (Spanish or English)`)
+        console.log(`Returning null to trigger 30-second skip detection in Step 4`)
         return null // Return null to trigger 30-second skip detection in Step 4
       }
 
@@ -177,11 +184,21 @@ export const transcribeCall = inngest.createFunction(
         const effectiveLanguage = (language && language.trim() !== '') ? language : detectedLanguage
         let transcriptionLanguage = effectiveLanguage || null
         
+        // Debug logging to understand why detection might not run
+        console.log(`DEBUG - Language detection check:`)
+        console.log(`  - isInbound: ${isInbound}`)
+        console.log(`  - language parameter: ${language || 'undefined/empty'}`)
+        console.log(`  - detectedLanguage from Step 2: ${detectedLanguage}`)
+        console.log(`  - effectiveLanguage: ${effectiveLanguage}`)
+        console.log(`  - transcriptionLanguage: ${transcriptionLanguage}`)
+        
         // For inbound calls with auto-detect (when re-transcribing or initial transcription),
         // ALWAYS use the 30-second skip detection to determine Spanish vs English
         // This ensures accurate language detection by analyzing the actual conversation
         // after the English answering machine greeting
         const shouldUse30SecondDetection = isInbound && !transcriptionLanguage
+        
+        console.log(`DEBUG - shouldUse30SecondDetection: ${shouldUse30SecondDetection} (isInbound: ${isInbound}, !transcriptionLanguage: ${!transcriptionLanguage})`)
         
         if (shouldUse30SecondDetection) {
           console.log(`Inbound call detected - performing 30-second skip language detection`)
@@ -229,15 +246,41 @@ export const transcribeCall = inngest.createFunction(
             .map((seg: any) => seg.text?.toLowerCase() || '')
             .join(' ')
           
+          // Log all segments after 30s for debugging
+          console.log(`Segments after 30 seconds:`)
+          segmentsAfter30s.forEach((seg: any, idx: number) => {
+            console.log(`  Segment ${idx}: start=${seg.start}s, text="${seg.text}"`)
+          })
+          
+          // Check for Spanish indicators in segments after 30 seconds
+          // Also check for common Spanish name patterns and words
           const hasSpanishContent = spanishIndicators.some(word => 
             segmentsText.includes(word)
           )
           
-          // Determine language: Spanish if indicators found, otherwise English
-          const detectedLang = hasSpanishContent ? 'es' : 'en'
+          // Additional check: if transcription is mostly filler words ("okay", "mhmm", etc.)
+          // and Deepgram detected English, but we're analyzing an inbound call,
+          // it might be Spanish that was poorly transcribed. Check for Spanish name patterns.
+          const spanishNamePatterns = ['garcia', 'lopez', 'rodriguez', 'martinez', 'gonzalez', 'hernandez', 'perez', 'sanchez', 'ramirez', 'torres', 'flores', 'rivera', 'gomez', 'diaz', 'cruz', 'morales', 'ortiz', 'gutierrez', 'chavez', 'ruiz']
+          const hasSpanishNames = spanishNamePatterns.some(name => 
+            segmentsText.includes(name)
+          )
           
-          console.log(`Language detection result: ${detectedLang} (Spanish indicators found: ${hasSpanishContent})`)
-          console.log(`Sample text from segments after 30s: ${segmentsText.substring(0, 200)}`)
+          // Also check if Deepgram detected English but the transcript seems garbled/poor quality
+          // This might indicate Spanish was transcribed incorrectly
+          const isPoorQualityEnglish = detectionResponse.language?.toLowerCase() === 'en' && 
+            segmentsText.split(' ').filter(w => w.length > 2).length < segmentsText.split(' ').length * 0.3 // Less than 30% real words
+          
+          // Determine language: Spanish if indicators found OR Spanish names found OR poor quality English
+          const detectedLang = (hasSpanishContent || hasSpanishNames || isPoorQualityEnglish) ? 'es' : 'en'
+          
+          console.log(`Language detection analysis:`)
+          console.log(`  - Spanish indicators found: ${hasSpanishContent}`)
+          console.log(`  - Spanish names found: ${hasSpanishNames}`)
+          console.log(`  - Poor quality English (possible Spanish): ${isPoorQualityEnglish}`)
+          console.log(`  - Deepgram detected language: ${detectionResponse.language}`)
+          console.log(`  - Language detection result: ${detectedLang}`)
+          console.log(`  - Sample text from segments after 30s: ${segmentsText.substring(0, 300)}`)
           
           // Second pass: Re-transcribe with detected language
           transcriptionLanguage = detectedLang
