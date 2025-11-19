@@ -104,23 +104,23 @@ export const transcribeCall = inngest.createFunction(
     })
     
     // Step 2: Detect language for inbound calls (skip first 30 seconds)
-    // For inbound calls without language specified (auto-detect), use standard auto-detection
-    // The English answering machine (first 30 seconds) may interfere, but we'll use prompts to handle it
+    // For inbound calls without language specified (auto-detect), we'll use 30-second skip detection
+    // This returns a special marker to trigger the 30-second skip logic in Step 4
     const detectedLanguage = await step.run('detect-language', async () => {
       // If language is manually specified (not empty string), use it
-      // Empty string means "Auto-Detect" from UI
+      // Empty string or undefined means "Auto-Detect" from UI
       if (language && language.trim() !== '') {
         console.log(`Using manually specified language: ${language}`)
         return language
       }
 
-      // For inbound calls with auto-detect, use standard auto-detection
-      // The prompt will help skip the first 30 seconds of English answering machine
+      // For inbound calls with auto-detect, return null to trigger 30-second skip detection
+      // The 30-second skip logic will analyze segments after 30 seconds to determine Spanish vs English
       const isInbound = callDetails.call_direction?.toLowerCase() === 'inbound'
       
       if (isInbound) {
-        console.log(`Inbound call with auto-detect - using standard auto-detection (will skip first 30 seconds of answering machine)`)
-        return null // Use auto-detection, prompt will handle the skip
+        console.log(`Inbound call with auto-detect - will use 30-second skip detection to determine language (Spanish or English)`)
+        return null // Return null to trigger 30-second skip detection in Step 4
       }
 
       // For outbound calls, use standard auto-detection
@@ -177,12 +177,16 @@ export const transcribeCall = inngest.createFunction(
         const effectiveLanguage = (language && language.trim() !== '') ? language : detectedLanguage
         let transcriptionLanguage = effectiveLanguage || null
         
-        // For inbound calls with auto-detect, do a two-pass approach:
-        // 1. First pass: Transcribe with auto-detect to get segments
-        // 2. Analyze segments after 30 seconds to detect Spanish vs English
-        // 3. Second pass: Re-transcribe with detected language (es or en)
-        if (isInbound && !transcriptionLanguage) {
-          console.log(`Inbound call with auto-detect - performing language detection from segments after 30 seconds`)
+        // For inbound calls with auto-detect (when re-transcribing or initial transcription),
+        // ALWAYS use the 30-second skip detection to determine Spanish vs English
+        // This ensures accurate language detection by analyzing the actual conversation
+        // after the English answering machine greeting
+        const shouldUse30SecondDetection = isInbound && !transcriptionLanguage
+        
+        if (shouldUse30SecondDetection) {
+          console.log(`Inbound call detected - performing 30-second skip language detection`)
+          console.log(`Call direction: ${callDetails.call_direction}, Language parameter: ${language || 'undefined/empty (auto-detect)'}`)
+          console.log(`This applies to both initial transcription and re-transcription with auto-detect`)
           
           // First pass: Transcribe with auto-detect to get segments
           const detectionPrompt = (prompt || '') + ' This is an inbound phone call. The first 30 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
@@ -273,7 +277,8 @@ export const transcribeCall = inngest.createFunction(
           ? formatSegmentsToTimestamps(whisperResponse.segments)
           : []
         
-        // For inbound calls with auto-detect, prioritize the language we detected from segments
+        // For inbound calls with auto-detect, prioritize the language we detected from 30-second skip
+        // This ensures Spanish calls are correctly identified even if Deepgram detected English from answering machine
         // Otherwise use the provider's detected language or fallback
         const finalLanguage = (isInbound && !effectiveLanguage && transcriptionLanguage) 
           ? transcriptionLanguage 
@@ -281,6 +286,9 @@ export const transcribeCall = inngest.createFunction(
         
         console.log(`Final language determined: ${finalLanguage}`)
         console.log(`Language breakdown - isInbound: ${isInbound}, effectiveLanguage: ${effectiveLanguage}, transcriptionLanguage: ${transcriptionLanguage}, whisperResponse.language: ${whisperResponse.language}`)
+        if (shouldUse30SecondDetection) {
+          console.log(`30-second skip detection was used - final language: ${finalLanguage}`)
+        }
         
         return {
           text: whisperResponse.text,
