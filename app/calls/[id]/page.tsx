@@ -32,6 +32,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'transcript' | 'insights'>('transcript')
+  const [transcriptionLanguage, setTranscriptionLanguage] = useState<string>('') // Empty = auto-detect
 
   // Fetch call and transcript data
   useEffect(() => {
@@ -134,7 +135,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         },
         body: JSON.stringify({
           callId: callId,
-          // No language specified - Whisper will auto-detect
+          language: transcriptionLanguage || undefined, // Empty string = auto-detect
         }),
       })
 
@@ -264,6 +265,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
         body: JSON.stringify({
           callId: callId,
           forceRetranscribe: true,
+          language: transcriptionLanguage || undefined, // Empty string = auto-detect
         }),
       })
 
@@ -452,12 +454,37 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
               <p className="text-gray-600 mb-4">
                 Transcribe this audio file to view and edit the transcript
               </p>
-              <button
-                onClick={handleStartTranscription}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Start Transcription
-              </button>
+              <div className="flex flex-col gap-3 items-center">
+                {/* Language Selector */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="start-transcription-language" className="text-sm text-gray-600">
+                    Language:
+                  </label>
+                  <select
+                    id="start-transcription-language"
+                    value={transcriptionLanguage}
+                    onChange={(e) => setTranscriptionLanguage(e.target.value)}
+                    disabled={isTranscribing}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Select language for transcription (empty = auto-detect)"
+                  >
+                    <option value="">Auto-detect</option>
+                    <option value="es">Spanish (Español)</option>
+                    <option value="en">English</option>
+                    <option value="fr">French (Français)</option>
+                    <option value="de">German (Deutsch)</option>
+                    <option value="it">Italian (Italiano)</option>
+                    <option value="pt">Portuguese (Português)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleStartTranscription}
+                  disabled={isTranscribing}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isTranscribing ? '⏳ Transcribing...' : 'Start Transcription'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -478,7 +505,29 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
             {/* Toggle between view and edit */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-900">Transcript</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                {/* Language Selector */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="transcription-language" className="text-sm text-gray-600">
+                    Language:
+                  </label>
+                  <select
+                    id="transcription-language"
+                    value={transcriptionLanguage}
+                    onChange={(e) => setTranscriptionLanguage(e.target.value)}
+                    disabled={isTranscribing}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Select language for transcription (empty = auto-detect)"
+                  >
+                    <option value="">Auto-detect</option>
+                    <option value="es">Spanish (Español)</option>
+                    <option value="en">English</option>
+                    <option value="fr">French (Français)</option>
+                    <option value="de">German (Deutsch)</option>
+                    <option value="it">Italian (Italiano)</option>
+                    <option value="pt">Portuguese (Português)</option>
+                  </select>
+                </div>
                 <button
                   onClick={handleRetranscribe}
                   disabled={isTranscribing}

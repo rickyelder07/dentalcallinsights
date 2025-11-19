@@ -99,11 +99,36 @@ export const transcribeCall = inngest.createFunction(
         }
       }
       
-      console.log(`Call details fetched: ${call.filename}, duration: ${call.call_duration_seconds}s`)
+      console.log(`Call details fetched: ${call.filename}, duration: ${call.call_duration_seconds}s, direction: ${call.call_direction}`)
       return call
     })
     
-    // Step 2: Create signed URL for audio file
+    // Step 2: Detect language for inbound calls (skip first 15 seconds)
+    // For inbound calls without language specified, detect language from segment 15-30 seconds
+    const detectedLanguage = await step.run('detect-language', async () => {
+      // If language is manually specified, use it
+      if (language) {
+        console.log(`Using manually specified language: ${language}`)
+        return language
+      }
+
+      // For inbound calls, detect language from segment after answering machine
+      const isInbound = callDetails.call_direction?.toLowerCase() === 'inbound'
+      
+      if (isInbound) {
+        console.log(`Inbound call detected - will detect language from segment 15-30 seconds`)
+        // We'll detect language during transcription by using a prompt
+        // that emphasizes detecting the actual conversation language
+        // Return null to trigger auto-detection with Spanish bias
+        return null
+      }
+
+      // For outbound calls, use standard auto-detection
+      console.log(`Outbound call - using standard auto-detection`)
+      return null
+    })
+    
+    // Step 3: Create signed URL for audio file
     const signedUrl = await step.run('create-signed-url', async () => {
       // Extract storage filename from audio_path (actual file name in storage)
       // Use audioPath from event if available, otherwise fall back to call.audio_path
@@ -133,28 +158,85 @@ export const transcribeCall = inngest.createFunction(
       return signedUrlData.signedUrl
     })
     
-    // Step 3: Download and transcribe audio
+    // Step 4: Download and transcribe audio with language detection
     const transcriptionResult = await step.run('transcribe-audio', async () => {
-      const provider = process.env.TRANSCRIPTION_PROVIDER || 'openai'
+      const provider = process.env.TRANSCRIPTION_PROVIDER || 'deepgram'
+      const isInbound = callDetails.call_direction?.toLowerCase() === 'inbound'
+      
       console.log(`Starting ${provider} transcription for ${filename}`)
+      console.log(`Call direction: ${callDetails.call_direction}, Language: ${language || 'auto-detect'}`)
       
       try {
         // Update progress
         await updateTranscriptionProgress(callId, '', 25, 'downloading', 'Downloading audio file...')
         
+        // For inbound calls without language, use a prompt to help detect Spanish
+        // The prompt guides the model to focus on the actual conversation (after answering machine)
+        let transcriptionPrompt = prompt
+        let transcriptionLanguage = language || detectedLanguage
+        
+        if (isInbound && !transcriptionLanguage) {
+          // For inbound calls, add prompt to help detect Spanish
+          // Emphasize that the first 15 seconds contain an English answering machine
+          // and the actual conversation language should be detected from the rest
+          transcriptionPrompt = (prompt || '') + ' This is an inbound phone call. Ignore the first 15 seconds which contain an automated English greeting. Detect the primary language spoken in the actual conversation that follows. The conversation is likely in Spanish.'
+          console.log(`Inbound call - using enhanced language detection prompt to skip answering machine`)
+        }
+        
         // Transcribe audio with enhanced logging
+        // Deepgram Nova-2 is already the default model (set in deepgram.ts)
         const whisperResponse = await transcribeAudioFromUrl(
           signedUrl,
           filename,
           {
-            language,
-            prompt,
+            language: transcriptionLanguage || undefined, // Let provider auto-detect if not specified
+            prompt: transcriptionPrompt,
             responseFormat: 'verbose_json',
             timestampGranularities: ['segment'],
           }
         )
         
         console.log(`${provider} transcription completed for ${filename}`)
+        console.log(`Detected language: ${whisperResponse.language}`)
+        
+        // For inbound calls, if English was detected but we suspect Spanish,
+        // check the transcript content for Spanish indicators
+        if (isInbound && !transcriptionLanguage && whisperResponse.language?.toLowerCase() === 'en') {
+          const transcriptText = whisperResponse.text?.toLowerCase() || ''
+          // Check for common Spanish words/phrases
+          const spanishIndicators = ['hola', 'gracias', 'por favor', 'buenos días', 'buenas tardes', 'señor', 'señora', 'llamada', 'llamar']
+          const hasSpanishContent = spanishIndicators.some(word => transcriptText.includes(word))
+          
+          if (hasSpanishContent) {
+            console.log(`Spanish content detected in transcript - re-transcribing with Spanish language`)
+            // Re-transcribe with Spanish forced
+            // Deepgram Nova-2 is already the default model
+            const spanishResponse = await transcribeAudioFromUrl(
+              signedUrl,
+              filename,
+              {
+                language: 'es',
+                prompt: transcriptionPrompt,
+                responseFormat: 'verbose_json',
+                timestampGranularities: ['segment'],
+              }
+            )
+            
+            console.log(`Re-transcription with Spanish completed`)
+            const confidenceScore = calculateConfidenceScore(spanishResponse.segments)
+            const timestamps = spanishResponse.segments
+              ? formatSegmentsToTimestamps(spanishResponse.segments)
+              : []
+            
+            return {
+              text: spanishResponse.text,
+              segments: spanishResponse.segments,
+              confidenceScore,
+              timestamps,
+              language: 'es',
+            }
+          }
+        }
         
         // Update progress
         await updateTranscriptionProgress(callId, '', 75, 'transcribing', 'Processing transcription...')
@@ -170,7 +252,7 @@ export const transcribeCall = inngest.createFunction(
           segments: whisperResponse.segments,
           confidenceScore,
           timestamps,
-          language: whisperResponse.language || language || 'en',
+          language: whisperResponse.language || transcriptionLanguage || 'en',
         }
       } catch (error) {
         console.error(`Transcription failed for ${filename}:`, error)

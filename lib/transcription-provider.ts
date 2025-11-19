@@ -20,7 +20,8 @@ import { createTranscriptionError, isTranscriptionError } from './openai'
 // CONFIGURATION
 // ============================================
 
-const PROVIDER = (process.env.TRANSCRIPTION_PROVIDER || 'openai').toLowerCase()
+// Default to Deepgram Nova-2 as primary provider (Whisper as fallback)
+const PROVIDER = (process.env.TRANSCRIPTION_PROVIDER || 'deepgram').toLowerCase()
 const FALLBACK_ENABLED = process.env.FALLBACK_TO_OPENAI !== 'false' // Default true
 const PRIMARY_PROVIDER = PROVIDER === 'deepgram' ? 'deepgram' : 'openai'
 
@@ -61,7 +62,7 @@ export async function transcribeAudio(
       return await deepgramTranscribe(audioFile, filename, {
         language: options.language,
         prompt: options.prompt,
-        model: process.env.DEEPGRAM_MODEL,
+        model: process.env.DEEPGRAM_MODEL || 'nova-2', // Default to Nova-2
       })
     } else {
       console.log(`[Transcription] Using OpenAI Whisper provider for ${filename}`)
@@ -116,7 +117,7 @@ export async function transcribeAudioFromUrl(
       return await deepgramTranscribe(audioUrl, filename, {
         language: options.language,
         prompt: options.prompt,
-        model: process.env.DEEPGRAM_MODEL,
+        model: process.env.DEEPGRAM_MODEL || 'nova-2', // Default to Nova-2
       })
     } else {
       console.log(`[Transcription] Using OpenAI Whisper provider for ${filename}`)
