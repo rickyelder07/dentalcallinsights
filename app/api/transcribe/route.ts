@@ -368,17 +368,16 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create transcript: ${upsertError.message}`)
     }
 
-    // Apply inbound call language logic: default to Spanish for inbound calls with auto-detect
-    // This prevents English answering machine from causing incorrect language detection
+    // Apply inbound call language logic: use standard auto-detect for inbound calls
+    // Add prompt to skip first 30 seconds of answering machine
     let effectiveLanguage = language
     let effectivePrompt = prompt
     
     if (!effectiveLanguage || effectiveLanguage.trim() === '') {
       const isInbound = call.call_direction?.toLowerCase() === 'inbound'
       if (isInbound) {
-        console.log(`Inbound call with auto-detect - defaulting to Spanish to avoid English answering machine interference`)
-        effectiveLanguage = 'es'
-        effectivePrompt = (prompt || '') + ' This is an inbound phone call. The first 15 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
+        console.log(`Inbound call with auto-detect - using standard auto-detection (will skip first 30 seconds of answering machine)`)
+        effectivePrompt = (prompt || '') + ' This is an inbound phone call. The first 30 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
       }
     }
 
@@ -513,16 +512,16 @@ async function processTranscription(
       .eq('id', callId)
       .single()
 
-    // Apply inbound call language logic: default to Spanish for inbound calls with auto-detect
+    // Apply inbound call language logic: use standard auto-detect for inbound calls
+    // Add prompt to skip first 30 seconds of answering machine
     let effectiveLanguage = options.language
     let effectivePrompt = options.prompt
     
     if (!effectiveLanguage || effectiveLanguage.trim() === '') {
       const isInbound = callData?.call_direction?.toLowerCase() === 'inbound'
       if (isInbound) {
-        console.log(`Inbound call with auto-detect - defaulting to Spanish to avoid English answering machine interference`)
-        effectiveLanguage = 'es'
-        effectivePrompt = (options.prompt || '') + ' This is an inbound phone call. The first 15 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
+        console.log(`Inbound call with auto-detect - using standard auto-detection (will skip first 30 seconds of answering machine)`)
+        effectivePrompt = (options.prompt || '') + ' This is an inbound phone call. The first 30 seconds contain an automated English greeting. Focus on transcribing the actual conversation that follows.'
       }
     }
 
