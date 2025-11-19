@@ -30,20 +30,61 @@ export const generateCallInsights = inngest.createFunction(
     console.log(`Starting insights generation for call ${callId}, job ${event.id}, forceRegenerate: ${forceRegenerate}`)
 
     try {
-      // Step 1: Fetch call details (to get team_id)
+      // Step 1: Fetch call details and verify team access
       const callDetails = await step.run('fetch-call', async () => {
+        // First fetch without user_id filter to check team access
         const { data: call, error } = await supabase
           .from('calls')
-          .select('team_id')
+          .select('*')
           .eq('id', callId)
           .single()
 
         if (error || !call) {
-          console.warn(`Could not fetch call details: ${error?.message}`)
-          return { team_id: null }
+          throw new Error(`Call not found: ${error?.message || 'Unknown error'}`)
         }
 
-        return call
+        // Check if user has access to this call:
+        // 1. User owns the call, OR
+        // 2. User is in the same team as the call owner
+        const hasAccess = call.user_id === userId
+
+        if (!hasAccess) {
+          // Check if users are in the same team
+          const { data: teamMemberships, error: teamError } = await supabase
+            .from('team_members')
+            .select('team_id')
+            .eq('user_id', userId)
+
+          if (teamError) {
+            throw new Error(`Error checking team access: ${teamError.message}`)
+          }
+
+          const userTeamIds = new Set((teamMemberships || []).map((tm: any) => tm.team_id))
+
+          // Check if call owner is in any of the user's teams
+          const { data: ownerMemberships, error: ownerError } = await supabase
+            .from('team_members')
+            .select('team_id')
+            .eq('user_id', call.user_id)
+            .in('team_id', Array.from(userTeamIds))
+
+          if (ownerError) {
+            throw new Error(`Error checking owner team access: ${ownerError.message}`)
+          }
+
+          // If call has team_id, check if user is member of that team
+          // OR if call owner and user share any team
+          const hasTeamAccess = 
+            (call.team_id && userTeamIds.has(call.team_id)) ||
+            (ownerMemberships && ownerMemberships.length > 0)
+
+          if (!hasTeamAccess) {
+            throw new Error(`Call not found or access denied: User ${userId} does not have access to call ${callId}`)
+          }
+        }
+
+        // Return only the fields we need
+        return { team_id: call.team_id || null }
       })
 
       // Step 2: Fetch transcript
@@ -220,7 +261,7 @@ export const generateCallInsights = inngest.createFunction(
       if (errorMessage === 'EMPTY_TRANSCRIPT') {
         console.log(`Creating placeholder insights for empty transcript: ${callId}`)
         const placeholderResult = await step.run('save-placeholder-insights', async () => {
-          // Fetch call details if not already available
+          // Fetch call details if not already available (team access already verified above)
           const { data: call } = await supabase
             .from('calls')
             .select('team_id')

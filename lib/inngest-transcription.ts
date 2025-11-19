@@ -46,16 +46,56 @@ export const transcribeCall = inngest.createFunction(
       }
       
       // Get call details from database
+      // First fetch without user_id filter to check team access
       const supabase = createAdminClient()
       const { data: call, error } = await supabase
         .from('calls')
         .select('*')
         .eq('id', callId)
-        .eq('user_id', userId)
         .single()
       
       if (error || !call) {
         throw new Error(`Call not found: ${error?.message || 'Unknown error'}`)
+      }
+
+      // Check if user has access to this call:
+      // 1. User owns the call, OR
+      // 2. User is in the same team as the call owner
+      const hasAccess = call.user_id === userId
+
+      if (!hasAccess) {
+        // Check if users are in the same team
+        const { data: teamMemberships, error: teamError } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', userId)
+
+        if (teamError) {
+          throw new Error(`Error checking team access: ${teamError.message}`)
+        }
+
+        const userTeamIds = new Set((teamMemberships || []).map((tm: any) => tm.team_id))
+
+        // Check if call owner is in any of the user's teams
+        const { data: ownerMemberships, error: ownerError } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', call.user_id)
+          .in('team_id', Array.from(userTeamIds))
+
+        if (ownerError) {
+          throw new Error(`Error checking owner team access: ${ownerError.message}`)
+        }
+
+        // If call has team_id, check if user is member of that team
+        // OR if call owner and user share any team
+        const hasTeamAccess = 
+          (call.team_id && userTeamIds.has(call.team_id)) ||
+          (ownerMemberships && ownerMemberships.length > 0)
+
+        if (!hasTeamAccess) {
+          throw new Error(`Call not found or access denied: User ${userId} does not have access to call ${callId}`)
+        }
       }
       
       console.log(`Call details fetched: ${call.filename}, duration: ${call.call_duration_seconds}s`)
