@@ -1072,11 +1072,20 @@ export function calculateExtensionPerformanceScore(
 
 /**
  * Find highest performing extension
+ * Only considers extensions in the PERFORMANCE_TRACKED_EXTENSIONS list
  */
 export function findHighestPerformer(calls: any[], insights: any[]): any {
-  const extensions = Array.from(new Set(calls.map((c) => c.source_extension).filter(Boolean)))
+  // Import extension tracking list
+  const { PERFORMANCE_TRACKED_EXTENSIONS } = require('./extension-names')
   
-  const performers = extensions
+  // Filter to only tracked extensions
+  const trackedExtensions = Array.from(
+    new Set(calls.map((c) => c.source_extension).filter(Boolean))
+  ).filter((ext) => PERFORMANCE_TRACKED_EXTENSIONS.includes(String(ext)))
+  
+  if (trackedExtensions.length === 0) return null
+  
+  const performers = trackedExtensions
     .map((ext) => calculateExtensionPerformanceScore(ext as string, calls, insights))
     .filter((p) => p !== null)
   
@@ -1089,11 +1098,20 @@ export function findHighestPerformer(calls: any[], insights: any[]): any {
 
 /**
  * Find lowest performing extension
+ * Only considers extensions in the PERFORMANCE_TRACKED_EXTENSIONS list
  */
 export function findLowestPerformer(calls: any[], insights: any[]): any {
-  const extensions = Array.from(new Set(calls.map((c) => c.source_extension).filter(Boolean)))
+  // Import extension tracking list
+  const { PERFORMANCE_TRACKED_EXTENSIONS } = require('./extension-names')
   
-  const performers = extensions
+  // Filter to only tracked extensions
+  const trackedExtensions = Array.from(
+    new Set(calls.map((c) => c.source_extension).filter(Boolean))
+  ).filter((ext) => PERFORMANCE_TRACKED_EXTENSIONS.includes(String(ext)))
+  
+  if (trackedExtensions.length === 0) return null
+  
+  const performers = trackedExtensions
     .map((ext) => calculateExtensionPerformanceScore(ext as string, calls, insights))
     .filter((p) => p !== null)
   

@@ -8,6 +8,7 @@
 import { useRouter } from 'next/navigation'
 import SentimentPieChart from './SentimentPieChart'
 import type { PerformerStats } from '@/types/analytics'
+import { getExtensionDisplayName } from '@/lib/extension-names'
 
 interface PerformerCardProps {
   performer: PerformerStats
@@ -45,12 +46,17 @@ export default function PerformerCard({ performer, type, dateRange }: PerformerC
         </span>
       </div>
 
-      {/* Extension Number */}
+      {/* Extension Name */}
       <div className="text-center mb-4">
         <div className="text-5xl font-bold mb-2">
-          {performer.extension}
+          {getExtensionDisplayName(performer.extension)}
         </div>
-        <div className="text-blue-100 text-sm">Extension</div>
+        <div className="text-blue-100 text-sm">
+          {(() => {
+            const displayName = getExtensionDisplayName(performer.extension)
+            return displayName === performer.extension ? 'Extension' : `Ext ${performer.extension}`
+          })()}
+        </div>
       </div>
 
       {/* Performance Score */}

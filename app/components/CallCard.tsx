@@ -10,6 +10,7 @@ import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { InsightsRecord } from '@/types/insights'
 import { formatCallTime, formatCallTimeOnly } from '@/lib/datetime'
+import { formatExtension } from '@/lib/extension-names'
 
 interface CallCardProps {
   call: Call & {
@@ -151,7 +152,7 @@ export default function CallCard({
           {/* Call details */}
           <div className="flex flex-wrap gap-2 mb-2 text-xs text-gray-600">
             {call.source_number && (
-              <span>From: {call.source_number}{call.source_extension && ` (Ext: ${call.source_extension})`}</span>
+              <span>From: {call.source_number}{call.source_extension && ` (${formatExtension(call.source_extension)})`}</span>
             )}
             {call.destination_number && (
               <span>To: {call.destination_number}</span>

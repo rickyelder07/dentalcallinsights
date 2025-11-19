@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch calls with date filtering
     // Use ISO format for timestamptz comparisons (Supabase expects ISO format)
-    // Create dates in local timezone, then convert to ISO
+    // Create dates in UTC directly to avoid timezone conversion issues
     let startDateISO: string
     let endDateISO: string
     
@@ -102,15 +102,15 @@ export async function GET(request: NextRequest) {
       if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay)) {
         throw new Error(`Invalid start date: ${dateStart}`)
       }
-      const startDateLocal = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0)
-      startDateISO = startDateLocal.toISOString()
+      // Create UTC date directly (midnight UTC for the start date)
+      startDateISO = `${dateStart}T00:00:00.000Z`
       
       const [endYear, endMonth, endDay] = dateEnd.split('-').map(Number)
       if (isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
         throw new Error(`Invalid end date: ${dateEnd}`)
       }
-      const endDateLocal = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
-      endDateISO = endDateLocal.toISOString()
+      // Create UTC date directly (end of day UTC for the end date)
+      endDateISO = `${dateEnd}T23:59:59.999Z`
       
       console.log('Date range:', { dateStart, dateEnd, startDateISO, endDateISO })
     } catch (dateError) {

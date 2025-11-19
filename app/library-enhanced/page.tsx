@@ -21,6 +21,7 @@ import type { Transcript } from '@/types/transcript'
 import type { FilterConfig } from '@/types/filters'
 import { applyFilters, applySorting, getPredefinedFilterPresets, getFilterSummary } from '@/lib/filters'
 import { parseCallTime, formatCallTime } from '@/lib/datetime'
+import { getExtensionDisplayName } from '@/lib/extension-names'
 
 interface CallWithTranscript extends Call {
   transcript?: Transcript | null
@@ -1150,9 +1151,14 @@ export default function EnhancedLibraryPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Extensions</option>
-              {Array.from(new Set(calls.map(c => c.source_extension).filter(Boolean))).sort().map(ext => (
-                <option key={ext} value={ext}>{ext}</option>
-              ))}
+              {Array.from(new Set(calls.map(c => c.source_extension).filter(Boolean))).sort().map(ext => {
+                const displayName = getExtensionDisplayName(ext)
+                return (
+                  <option key={ext} value={ext}>
+                    {displayName} {displayName !== ext ? `(Ext ${ext})` : ''}
+                  </option>
+                )
+              })}
             </select>
           </div>
         </div>

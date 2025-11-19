@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
 import { formatCallTime } from '@/lib/datetime'
 import { createSignedUrl } from '@/lib/storage'
+import { formatExtension } from '@/lib/extension-names'
 import AudioPlayer from '@/app/components/AudioPlayer'
 import TranscriptViewer from '@/app/components/TranscriptViewer'
 import TranscriptEditor from '@/app/components/TranscriptEditor'
@@ -83,8 +84,9 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       }
 
       // Get signed URL for audio file
+      // Use call owner's user_id since files are stored in their folder
       const signedUrlResult = await createSignedUrl(
-        session.user.id,
+        callData.user_id,
         callData.filename,
         3600
       )
@@ -547,7 +549,7 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
                 <span className="text-gray-600">From:</span>
                 <span className="ml-2 text-gray-900">{call.source_number}</span>
                 {call.source_extension && (
-                  <span className="ml-1 text-gray-600">(Ext: {call.source_extension})</span>
+                  <span className="ml-1 text-gray-600">({formatExtension(call.source_extension)})</span>
                 )}
                 {call.source_name && (
                   <span className="ml-1 text-gray-600">({call.source_name})</span>

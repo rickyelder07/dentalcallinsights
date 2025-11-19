@@ -13,6 +13,7 @@ import SentimentPieChart from '../components/SentimentPieChart'
 import SatisfactionGauge from '../components/SatisfactionGauge'
 import { HorizontalBars } from '../components/HorizontalBar'
 import { formatCallTime } from '@/lib/datetime'
+import { getExtensionDisplayName } from '@/lib/extension-names'
 import type { CallerOverview, CallerPerformanceMetrics } from '@/types/analytics'
 
 type TabType = 'overview' | 'by-caller'
@@ -432,13 +433,17 @@ export default function CallerAnalyticsPage() {
                   onClick={() => handleExtensionClick(caller.extension)}
                 >
                   <div className="flex items-center gap-6">
-                    {/* Extension Number */}
+                    {/* Extension Name */}
                     <div className="flex-shrink-0">
                       <div className="text-3xl font-bold text-gray-900">
-                        Ext {caller.extension}
+                        {getExtensionDisplayName(caller.extension)}
                       </div>
                       <div className="text-sm text-gray-600 mt-1">
                         {caller.totalCalls} calls
+                        {(() => {
+                          const displayName = getExtensionDisplayName(caller.extension)
+                          return displayName !== caller.extension ? ` • Ext ${caller.extension}` : ''
+                        })()}
                       </div>
                     </div>
 
@@ -527,11 +532,14 @@ export default function CallerAnalyticsPage() {
               className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Select an extension...</option>
-              {availableExtensions.map((ext) => (
-                <option key={ext} value={ext}>
-                  Extension {ext}
-                </option>
-              ))}
+              {availableExtensions.map((ext) => {
+                const displayName = getExtensionDisplayName(ext)
+                return (
+                  <option key={ext} value={ext}>
+                    {displayName} {displayName !== ext ? `(Ext ${ext})` : ''}
+                  </option>
+                )
+              })}
             </select>
           </div>
 
@@ -556,7 +564,14 @@ export default function CallerAnalyticsPage() {
             <div className="space-y-6">
               {/* Extension Header */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-2">Extension {performanceData.extension}</h2>
+                <h2 className="text-2xl font-bold mb-2">
+                  {(() => {
+                    const displayName = getExtensionDisplayName(performanceData.extension)
+                    return displayName !== performanceData.extension 
+                      ? `${displayName} (Ext ${performanceData.extension})`
+                      : `Extension ${performanceData.extension}`
+                  })()}
+                </h2>
                 <p className="text-blue-100">
                   Performance metrics for {performanceData.callVolume.totalCalls} calls
                   {hasActiveFilters() && ' (filtered)'}
