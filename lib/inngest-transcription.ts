@@ -104,19 +104,20 @@ export const transcribeCall = inngest.createFunction(
     })
     
     // Step 2: Detect language for inbound calls (skip first 15 seconds)
-    // For inbound calls without language specified, detect language from segment 15-30 seconds
+    // For inbound calls without language specified (auto-detect), detect language from segment 15-30 seconds
     const detectedLanguage = await step.run('detect-language', async () => {
-      // If language is manually specified, use it
-      if (language) {
+      // If language is manually specified (not empty string), use it
+      // Empty string means "Auto-Detect" from UI
+      if (language && language.trim() !== '') {
         console.log(`Using manually specified language: ${language}`)
         return language
       }
 
-      // For inbound calls, detect language from segment after answering machine
+      // For inbound calls with auto-detect, detect language from segment after answering machine
       const isInbound = callDetails.call_direction?.toLowerCase() === 'inbound'
       
       if (isInbound) {
-        console.log(`Inbound call detected - will detect language from segment 15-30 seconds`)
+        console.log(`Inbound call with auto-detect - will detect language from segment 15-30 seconds (skipping first 15 seconds)`)
         // We'll detect language during transcription by using a prompt
         // that emphasizes detecting the actual conversation language
         // Return null to trigger auto-detection with Spanish bias
@@ -170,17 +171,20 @@ export const transcribeCall = inngest.createFunction(
         // Update progress
         await updateTranscriptionProgress(callId, '', 25, 'downloading', 'Downloading audio file...')
         
-        // For inbound calls without language, use a prompt to help detect Spanish
+        // For inbound calls without language (auto-detect), use a prompt to help detect Spanish
         // The prompt guides the model to focus on the actual conversation (after answering machine)
         let transcriptionPrompt = prompt
-        let transcriptionLanguage = language || detectedLanguage
+        // Treat empty string as auto-detect (null/undefined)
+        const effectiveLanguage = (language && language.trim() !== '') ? language : detectedLanguage
+        let transcriptionLanguage = effectiveLanguage || null
         
+        // Apply 15-second skip logic for inbound calls when using auto-detect
         if (isInbound && !transcriptionLanguage) {
-          // For inbound calls, add prompt to help detect Spanish
+          // For inbound calls with auto-detect, add prompt to help detect Spanish
           // Emphasize that the first 15 seconds contain an English answering machine
           // and the actual conversation language should be detected from the rest
           transcriptionPrompt = (prompt || '') + ' This is an inbound phone call. Ignore the first 15 seconds which contain an automated English greeting. Detect the primary language spoken in the actual conversation that follows. The conversation is likely in Spanish.'
-          console.log(`Inbound call - using enhanced language detection prompt to skip answering machine`)
+          console.log(`Inbound call with auto-detect - using enhanced language detection prompt to skip answering machine (first 15 seconds)`)
         }
         
         // Transcribe audio with enhanced logging

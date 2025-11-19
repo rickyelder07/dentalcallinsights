@@ -5,7 +5,6 @@
  * Individual call display with status, actions, and quick insights
  */
 
-import { useRouter } from 'next/navigation'
 import type { Call } from '@/types/upload'
 import type { Transcript } from '@/types/transcript'
 import type { InsightsRecord } from '@/types/insights'
@@ -29,7 +28,6 @@ export default function CallCard({
   onSelect,
   showCheckbox = true,
 }: CallCardProps) {
-  const router = useRouter()
 
   // Format date
   const formatDate = (dateString?: string) =>
@@ -131,7 +129,7 @@ export default function CallCard({
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1 min-w-0">
               <button
-                onClick={() => router.push(`/calls/${call.id}`)}
+                onClick={() => window.open(`/calls/${call.id}`, '_blank')}
                 className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block"
               >
                 {call.filename}
@@ -202,7 +200,7 @@ export default function CallCard({
           {/* Actions */}
           <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end">
             <button
-              onClick={() => router.push(`/calls/${call.id}`)}
+              onClick={() => window.open(`/calls/${call.id}`, '_blank')}
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
               View Details →

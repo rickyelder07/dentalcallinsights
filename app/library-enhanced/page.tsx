@@ -1320,7 +1320,7 @@ export default function EnhancedLibraryPage() {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
                         <button
-                          onClick={() => router.push(`/calls/${call.id}`)}
+                          onClick={() => window.open(`/calls/${call.id}`, '_blank')}
                           className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block"
                         >
                           {call.filename}
@@ -1368,7 +1368,7 @@ export default function EnhancedLibraryPage() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => router.push(`/calls/${call.id}`)}
+                        onClick={() => window.open(`/calls/${call.id}`, '_blank')}
                         className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                       >
                         View Details →
