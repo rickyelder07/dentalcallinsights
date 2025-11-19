@@ -7,6 +7,19 @@ import { createBrowserClient } from '@/lib/supabase'
 import type { StoragePath, FileUploadOptions, UploadProgress } from '@/types/upload'
 
 /**
+ * Extract storage filename from audio_path
+ * audio_path format: {user_id}/{original_filename}
+ * Returns just the filename part
+ */
+export function extractStorageFilename(audioPath: string | null | undefined): string | null {
+  if (!audioPath) return null
+  
+  // Extract filename from path (last part after /)
+  const pathParts = audioPath.split('/')
+  return pathParts.length > 1 ? pathParts[pathParts.length - 1] : audioPath
+}
+
+/**
  * Storage bucket name for call recordings
  */
 export const STORAGE_BUCKET = 'audio-files'

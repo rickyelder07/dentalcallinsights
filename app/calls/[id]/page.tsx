@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
 import { formatCallTime } from '@/lib/datetime'
-import { createSignedUrl } from '@/lib/storage'
+import { createSignedUrl, extractStorageFilename } from '@/lib/storage'
 import { formatExtension } from '@/lib/extension-names'
 import AudioPlayer from '@/app/components/AudioPlayer'
 import TranscriptViewer from '@/app/components/TranscriptViewer'
@@ -84,16 +84,23 @@ export default function CallDetailPage({ params }: { params: { id: string } }) {
       }
 
       // Get signed URL for audio file
-      // Use call owner's user_id since files are stored in their folder
+      // Extract filename from audio_path (which contains {user_id}/{original_filename})
+      // The filename field may have been updated to new format, but storage file still has original name
+      const storageFilename = extractStorageFilename(callData.audio_path) || callData.filename
+      
       const signedUrlResult = await createSignedUrl(
         callData.user_id,
-        callData.filename,
+        storageFilename,
         3600
       )
 
       if (signedUrlResult.url) {
         setAudioUrl(signedUrlResult.url)
       } else {
+        console.error('Failed to create signed URL:', signedUrlResult.error)
+        console.error('Attempted path:', `${callData.user_id}/${storageFilename}`)
+        console.error('Audio path:', callData.audio_path)
+        console.error('Display filename:', callData.filename)
         setError('Failed to load audio file')
       }
     } catch (err) {

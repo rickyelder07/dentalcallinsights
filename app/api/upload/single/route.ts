@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { generateCallFilename } from '@/lib/filename-generator'
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/aac']
@@ -69,7 +70,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Generate standardized filename based on call metadata
+    // Note: single upload may not have all fields, so we use what's available
+    const generatedFilename = generateCallFilename({
+      extension: null, // Not available in single upload
+      direction: direction || null,
+      callTime: callTime || new Date().toISOString(),
+      callFlow: null, // Not available in single upload
+      durationSeconds: durationSeconds ? parseInt(durationSeconds) : null,
+      fileExtension: filename.split('.').pop() || 'mp3',
+    })
+
     // Upload file to Supabase Storage with retry logic
+    // Keep original filename for storage path
     const storagePath = `${user.id}/${filename}`
     let uploadSuccess = false
     let lastError: Error | null = null
@@ -113,12 +126,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Check if call already exists
+    // Check if call already exists (use generated filename for lookup)
     const { data: existingCall } = await supabase
       .from('calls')
       .select('id')
       .eq('user_id', user.id)
-      .eq('filename', filename)
+      .eq('filename', generatedFilename)
       .eq('call_time', callTime)
       .maybeSingle()
 
@@ -129,6 +142,7 @@ export async function POST(request: NextRequest) {
       const { data: updatedCall, error: updateError } = await supabase
         .from('calls')
         .update({
+          filename: generatedFilename,
           audio_path: storagePath,
           file_size: audioFile.size,
           file_type: audioFile.type,
@@ -158,7 +172,7 @@ export async function POST(request: NextRequest) {
         .from('calls')
         .insert({
           user_id: user.id,
-          filename: filename,
+          filename: generatedFilename,
           audio_path: storagePath,
           file_size: audioFile.size,
           file_type: audioFile.type,
@@ -188,9 +202,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully uploaded "${filename}"`,
+      message: `Successfully uploaded "${generatedFilename}"`,
       callId: callId,
-      filename: filename,
+      filename: generatedFilename,
     })
 
   } catch (error) {

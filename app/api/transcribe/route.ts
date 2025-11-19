@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 import { sendEvent } from '@/lib/inngest'
+import { extractStorageFilename } from '@/lib/storage'
 import {
   transcribeAudioFromUrl,
   calculateConfidenceScore,
@@ -312,10 +313,13 @@ export async function POST(req: NextRequest) {
     // Trigger Inngest transcription event
     // This will handle long-running transcriptions without timeout limits
     try {
+      // Extract storage filename from audio_path (actual file name in storage)
+      const storageFilename = extractStorageFilename(call.audio_path) || call.filename
+      
       await sendEvent('transcription/start', {
         callId,
         userId: user.id,
-        filename: call.filename,
+        filename: storageFilename,
         audioPath: call.audio_path,
         language,
         prompt,
@@ -326,8 +330,11 @@ export async function POST(req: NextRequest) {
       // Fallback to direct processing for short calls
       if (call.call_duration_seconds && call.call_duration_seconds < 60) {
         console.log('Falling back to direct processing for short call')
+        // Extract storage filename from audio_path (actual file name in storage)
+        const storageFilename = extractStorageFilename(call.audio_path) || call.filename
+        
         setImmediate(() => {
-          processTranscription(callId, call.audio_path, call.filename, user.id, jobId, {
+          processTranscription(callId, call.audio_path, storageFilename, user.id, jobId, {
             language,
             prompt,
           }).catch(async (error) => {

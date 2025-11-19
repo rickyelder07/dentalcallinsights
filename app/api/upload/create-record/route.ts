@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { parseNewPatientStatus } from '@/lib/call-flow-parser'
+import { generateCallFilename } from '@/lib/filename-generator'
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,12 +53,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if call already exists
+    // Generate standardized filename based on call metadata
+    const generatedFilename = generateCallFilename({
+      extension: sourceExtension,
+      direction: direction,
+      callTime: callTime,
+      callFlow: callFlow,
+      durationSeconds: durationSeconds ? parseInt(durationSeconds) : null,
+      fileExtension: filename.split('.').pop() || 'mp3',
+    })
+
+    // Check if call already exists (use generated filename for lookup)
     const { data: existingCall } = await supabase
       .from('calls')
       .select('id')
       .eq('user_id', user.id)
-      .eq('filename', filename)
+      .eq('filename', generatedFilename)
       .eq('call_time', callTime)
       .maybeSingle()
 
@@ -65,13 +76,14 @@ export async function POST(request: NextRequest) {
 
     if (existingCall) {
       // Update existing record
-      console.log('📝 Updating existing call record (create-record route):', filename)
+      console.log('📝 Updating existing call record (create-record route):', filename, '->', generatedFilename)
       const isNewPatient = parseNewPatientStatus(callFlow, direction)
       console.log('   is_new_patient will be set to:', isNewPatient)
       
       const { data: updatedCall, error: updateError } = await supabase
         .from('calls')
         .update({
+          filename: generatedFilename,
           audio_path: storagePath,
           file_size: fileSize,
           file_type: fileType,
@@ -107,13 +119,13 @@ export async function POST(request: NextRequest) {
       callId = updatedCall?.id || null
     } else {
       // Create new database record
-      console.log('📝 Creating new call record (create-record route):', filename)
+      console.log('📝 Creating new call record (create-record route):', filename, '->', generatedFilename)
       const isNewPatient = parseNewPatientStatus(callFlow, direction)
       console.log('   is_new_patient will be set to:', isNewPatient)
       
       const insertPayload = {
         user_id: user.id,
-        filename: filename,
+        filename: generatedFilename,
         audio_path: storagePath,
         file_size: fileSize,
         file_type: fileType,
@@ -157,9 +169,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully created record for "${filename}"`,
+      message: `Successfully created record for "${generatedFilename}"`,
       callId: callId,
-      filename: filename,
+      filename: generatedFilename,
     })
 
   } catch (error) {

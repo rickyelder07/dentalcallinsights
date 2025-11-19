@@ -9,6 +9,7 @@ import { createServerClient } from '@/lib/supabase'
 import { SimplifiedCsvParser } from '@/lib/csv-parser-simplified'
 import { parseNewPatientStatus } from '@/lib/call-flow-parser'
 import { getCallTeamId } from '@/lib/teams'
+import { generateCallFilename } from '@/lib/filename-generator'
 import type { UploadResult } from '@/types/upload'
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
@@ -276,13 +277,23 @@ export async function POST(request: NextRequest) {
           continue
         }
 
+        // Generate standardized filename based on call metadata
+        const generatedFilename = generateCallFilename({
+          extension: csvRow.source_extension,
+          direction: csvRow.direction,
+          callTime: csvRow.call_time,
+          callFlow: csvRow.call_flow,
+          durationSeconds: csvRow.duration_seconds,
+          fileExtension: file.name.split('.').pop() || 'mp3',
+        })
+
         // Check if call already exists (based on user_id, filename, and call_time)
         // Use maybeSingle() to gracefully handle cases where multiple matches exist
         const { data: existingCall } = await supabase
           .from('calls')
           .select('id')
           .eq('user_id', user.id)
-          .eq('filename', file.name)
+          .eq('filename', generatedFilename)
           .eq('call_time', csvRow.call_time)
           .maybeSingle()
 
@@ -295,6 +306,7 @@ export async function POST(request: NextRequest) {
           const { data: updatedCall, error: updateError } = await supabase
             .from('calls')
             .update({
+              filename: generatedFilename,
               audio_path: storagePath,
               file_size: file.size,
               file_type: file.type,
@@ -324,14 +336,14 @@ export async function POST(request: NextRequest) {
           callId = updatedCall?.id || null
         } else {
           // Create new database record
-          console.log('📝 Creating new call record WITH audio:', file.name)
+          console.log('📝 Creating new call record WITH audio:', file.name, '->', generatedFilename)
           const isNewPatient = parseNewPatientStatus(csvRow.call_flow, csvRow.direction)
           console.log('   is_new_patient will be set to:', isNewPatient)
           
           const insertPayload = {
             user_id: user.id,
             team_id: teamId, // Include team_id if user belongs to a team
-            filename: file.name,
+            filename: generatedFilename,
             audio_path: storagePath,
             file_size: file.size,
             file_type: file.type,

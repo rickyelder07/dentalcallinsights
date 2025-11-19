@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { extractStorageFilename } from '@/lib/storage'
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,8 +35,11 @@ export async function GET(req: NextRequest) {
     console.log(`Debug: User ID: ${call.user_id}`)
 
     // Test 1: Create signed URL
-    const storagePath = `${call.user_id}/${call.filename}`
+    // Extract storage filename from audio_path (actual file name in storage)
+    const storageFilename = extractStorageFilename(call.audio_path) || call.filename
+    const storagePath = `${call.user_id}/${storageFilename}`
     console.log(`Debug: Storage path: ${storagePath}`)
+    console.log(`Debug: Storage filename (from audio_path): ${storageFilename}`)
     
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('audio-files')
