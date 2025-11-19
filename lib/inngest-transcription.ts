@@ -13,6 +13,7 @@ import {
 } from './transcription-provider'
 import { applyUserCorrections } from './transcription-corrections'
 import { updateTranscriptionProgress, markTranscriptionComplete, markTranscriptionFailed } from './inngest'
+import { extractStorageFilename } from './storage'
 
 const STORAGE_BUCKET = 'audio-files'
 
@@ -104,16 +105,27 @@ export const transcribeCall = inngest.createFunction(
     
     // Step 2: Create signed URL for audio file
     const signedUrl = await step.run('create-signed-url', async () => {
-      console.log(`Creating signed URL for ${filename}`)
+      // Extract storage filename from audio_path (actual file name in storage)
+      // Use audioPath from event if available, otherwise fall back to call.audio_path
+      const actualAudioPath = audioPath || callDetails.audio_path
+      const storageFilename = extractStorageFilename(actualAudioPath) || filename || callDetails.filename
+      
+      // Use call owner's user_id for storage path (files are stored in their folder)
+      const callOwnerId = callDetails.user_id
+      
+      console.log(`Creating signed URL for ${storageFilename}`)
+      console.log(`Using call owner ID: ${callOwnerId}, audio_path: ${actualAudioPath}`)
       
       const supabase = createAdminClient()
-      const storagePath = `${userId}/${filename}`
+      const storagePath = `${callOwnerId}/${storageFilename}`
       
       const { data: signedUrlData, error } = await supabase.storage
         .from(STORAGE_BUCKET)
         .createSignedUrl(storagePath, 3600) // 1 hour expiry
       
       if (error || !signedUrlData?.signedUrl) {
+        console.error(`Failed to create signed URL for path: ${storagePath}`)
+        console.error(`Error details:`, error)
         throw new Error(`Failed to create signed URL: ${error?.message || 'Unknown error'}`)
       }
       
